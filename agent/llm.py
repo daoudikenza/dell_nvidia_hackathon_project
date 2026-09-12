@@ -9,11 +9,14 @@ from .config import CFG
 
 class Offline(Exception): pass
 
+# Local inference must never go through a host proxy -- see agent/okta.py.
+_OPENER = urllib.request.build_opener(urllib.request.ProxyHandler({}))
+
 def _post(url, payload, timeout=180):
     req = urllib.request.Request(url, method="POST",
         data=json.dumps(payload).encode(),
         headers={"Content-Type": "application/json"})
-    with urllib.request.urlopen(req, timeout=timeout) as r:
+    with _OPENER.open(req, timeout=timeout) as r:
         return json.loads(r.read())
 
 def _vllm(spec, system, prompt):
@@ -57,7 +60,7 @@ def probe(base):
     for path in ("/models", "/v1/models", "/api/tags", "/health"):
         url = base.rstrip("/").removesuffix("/v1") + path
         try:
-            with urllib.request.urlopen(url, timeout=6) as r:
+            with _OPENER.open(url, timeout=6) as r:
                 return url, json.loads(r.read())
         except Exception:
             continue

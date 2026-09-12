@@ -7,15 +7,21 @@ from .config import CFG
 
 BASE = CFG["okta"]
 
+# Everything we talk to is on this machine. If the host has http_proxy /
+# https_proxy set (common on managed and event networks), urllib will route
+# even localhost through it and the handshake fails as
+# [SSL: WRONG_VERSION_NUMBER]. An explicit empty ProxyHandler opts out.
+_OPENER = urllib.request.build_opener(urllib.request.ProxyHandler({}))
+
 def _get(path):
-    with urllib.request.urlopen(f"{BASE}{path}", timeout=30) as r:
+    with _OPENER.open(f"{BASE}{path}", timeout=30) as r:
         return json.loads(r.read())
 
 def _send(path, method, body=None):
     req = urllib.request.Request(f"{BASE}{path}", method=method,
         data=json.dumps(body).encode() if body else None,
         headers={"Content-Type": "application/json"})
-    with urllib.request.urlopen(req, timeout=30) as r:
+    with _OPENER.open(req, timeout=30) as r:
         return r.status
 
 def users():                 return _get("/api/v1/users")
