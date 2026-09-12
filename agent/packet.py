@@ -89,6 +89,7 @@ def build(user_id, team, use_llm=True):
                 f"the developer is setting up and why. Do NOT list or name any environment "
                 f"variables, files, or tokens - those are rendered separately. Facts:\n{facts}"),
                 "Running it locally")
+            prose["_model"] = llm.LAST_USED or "?"
         except llm.Offline as e:
             prose["_offline"] = str(e)
 
@@ -106,7 +107,8 @@ def render(p):
           f'start_date: {prof.get("startDate","-")}',
           f'manager: {prof.get("manager","-")}',
           f'generated: {p["generated"]}',
-          f'model: {CFG["inference"]["primary"]["model"]}   # on-box, no network',
+          f'model: {p["prose"].get("_model") or "none — no prose generated"}'
+          f'   # on-box, no network',
           f'status: {"awaiting-approval" if g["passed"] else "blocked-mfa"}',
           "access:", "  derived:"]
     for d in p["derived"]:

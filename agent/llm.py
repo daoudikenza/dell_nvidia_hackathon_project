@@ -10,6 +10,10 @@ from . import trace
 
 class Offline(Exception): pass
 
+# The model that actually answered, so a packet records what ran rather than
+# what was configured. An audit document must not claim a model it never used.
+LAST_USED = None
+
 # Local inference must never go through a host proxy -- see agent/okta.py.
 _OPENER = urllib.request.build_opener(urllib.request.ProxyHandler({}))
 
@@ -86,6 +90,8 @@ def ask(system, prompt, _only=None):
             t = time.time()
             out = fn(spec, system, prompt).strip()
             if not _only:
+                global LAST_USED
+                LAST_USED = spec["model"]
                 dt = time.time() - t
                 trace.log("llm", f"got  {len(out)//4} tok",
                           f"{dt:.1f}s · {(len(out)//4)/max(dt,.01):.0f} tok/s")
