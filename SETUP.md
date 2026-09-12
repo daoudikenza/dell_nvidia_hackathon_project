@@ -63,7 +63,7 @@ accident — vLLM is not up. If it says neither, start one before continuing.
 Now run the pipeline:
 
     python3 -m agent baseline billing
-    python3 -m agent onboard 00uNEWHIRE01 billing
+    python3 -m agent onboard nadia billing
     cat packets/nadia-rahimi.md
 
 If you see a packet with real file citations, **the product works.** Everything

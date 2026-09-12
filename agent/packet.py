@@ -39,7 +39,8 @@ def owners(repo, subpath, top=4):
 
 def build(user_id, team, use_llm=True):
     repo   = CFG["repo"]
-    u      = okta.user(user_id)
+    u      = okta.resolve(user_id)
+    user_id = u["id"]
     prof   = u["profile"]
     paths  = TEAM_PATHS.get(team, [])
     derived     = scan(paths)

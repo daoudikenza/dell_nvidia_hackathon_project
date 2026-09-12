@@ -69,9 +69,22 @@ def main(argv):
         return 0
 
     if cmd == "onboard":
-        from . import packet
+        from . import packet, okta
         uid, team = rest[0], rest[1]
-        p = packet.build(uid, team, use_llm="--no-llm" not in rest)
+        try:
+            who = okta.resolve(uid)
+        except LookupError as e:
+            print(f"\n  {e}\n")
+            staged = [u for u in okta.users() if u["status"] == "STAGED"]
+            if staged:
+                print("  people awaiting onboarding:")
+                for u in staged:
+                    print(f'     {u["profile"]["firstName"]} {u["profile"]["lastName"]}'
+                          f'  ({u["profile"].get("department","-")})  id={u["id"]}')
+            return 1
+        print(f'\n  {who["profile"]["firstName"]} {who["profile"]["lastName"]}'
+              f'  <{who["profile"]["login"]}>  [{who["id"]}]')
+        p = packet.build(who["id"], team, use_llm="--no-llm" not in rest)
         out = packet.write(p)
         n = len(p["derived"]) + len(p["conventional"])
         print(f'\n  packet written: {out}')

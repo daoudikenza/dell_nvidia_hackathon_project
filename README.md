@@ -53,7 +53,7 @@ error, never a silent cloud call.
     python3 -m agent baseline billing            # the problem: 9 grants, 0 justified
     python3 -m agent scan     billing            # code-derived signals w/ file:line
     python3 -m agent peers    billing            # what the team actually uses
-    python3 -m agent onboard  00uNEWHIRE01 billing
+    python3 -m agent onboard  nadia billing
     python3 -m agent crosscheck packets/nadia-rahimi.md
     python3 -m agent approve  packets/nadia-rahimi.md sarah.chen@cal.example.com
     python3 -m agent drift                       # the always-on scan

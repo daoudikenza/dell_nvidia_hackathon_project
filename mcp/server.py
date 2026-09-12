@@ -43,7 +43,8 @@ TOOLS = [
    "description": ("Produce the onboarding packet: knowledge plus a justified access "
                    "proposal. Writes a markdown file and returns a summary."),
    "inputSchema": {"type":"object","properties":{
-       "user_id":{"type":"string"},"team":{"type":"string"}},"required":["user_id","team"]}},
+       "user_id":{"type":"string","description":"Okta id, email, or name"},
+       "team":{"type":"string"}},"required":["user_id","team"]}},
 
   {"name": "find_gaps",
    "description": ("Cross-check a packet: systems the onboarding prose tells the new hire "
@@ -86,7 +87,7 @@ def call(name, a):
         return {"conventional": peers.conventional(a["team"])}
 
     if name == "check_mfa":
-        return gate.check(a["user_id"])
+        return gate.check(okta.resolve(a["user_id"])["id"])
 
     if name == "build_packet":
         p = pk.build(a["user_id"], a["team"])

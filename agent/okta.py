@@ -36,6 +36,28 @@ def assign(gid, uid, why=None, by=None):
                  {"justification": why, "approvedBy": by})
 def revoke(gid, uid):        return _send(f"/api/v1/groups/{gid}/users/{uid}", "DELETE")
 
+def resolve(who):
+    """
+    Accept an Okta id, an email, or part of a name.
+
+    Nobody should have to type 00uNEWHIRE01 correctly under stage lights, and a
+    one-character slip currently surfaces as a raw 404 traceback.
+    """
+    us = users()
+    for u in us:                                        # exact id
+        if u["id"] == who: return u
+    w = who.strip().lower()
+    for u in us:                                        # exact email / login
+        if u["profile"]["login"].lower() == w: return u
+    hits = [u for u in us                               # name substring
+            if w in f'{u["profile"]["firstName"]} {u["profile"]["lastName"]}'.lower()
+            or w in u["profile"]["login"].lower()]
+    if len(hits) == 1: return hits[0]
+    if len(hits) > 1:
+        names = ", ".join(f'{h["profile"]["firstName"]} {h["profile"]["lastName"]}' for h in hits[:6])
+        raise LookupError(f"'{who}' matches {len(hits)} people: {names}")
+    raise LookupError(f"no user matching '{who}'")
+
 def gid_by_name(name):
     return next((g["id"] for g in groups() if g["profile"]["name"] == name), None)
 def name_by_gid(gid):
