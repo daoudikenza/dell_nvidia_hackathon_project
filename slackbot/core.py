@@ -48,8 +48,9 @@ def _rules(text):
     t = text.lower()
     if re.search(r"\b(onboard|new hire|joining|joins|starts?|starting|what does .* need)\b", t):
         return "onboard"
-    if re.search(r"\b(local|locally|on.?box|air.?gap|offline|egress|nvidia|gpu|"
-                 r"what model|which model|where.*(run|running))\b", t): return "local"
+    if re.search(r"\b(status|healthy|health|local|locally|on.?box|air.?gap|offline|"
+                 r"egress|nvidia|gpu|what model|which model|"
+                 r"where.*(run|running))\b", t): return "local"
     if re.search(r"\b(mfa|okta verify|2fa|second factor)\b", t): return "mfa_audit"
     if re.search(r"\b(drift|unused|stale|audit|over-?provision|revok|nobody uses|never used|"
                  r"not used|dormant|production access|prod access)", t): return "drift"
@@ -176,8 +177,8 @@ HELP = ("I work out what a new hire needs from the code they'll work on.\n"
         "  • `@Least onboard @person to billing`\n"
         "  • `@Least who has production access nobody uses?`\n"
         "  • `@Least who has elevated access without MFA?`\n"
-        "  • `@Least are you running locally?` — model id, GPU, and everything "
-        "this box has a connection to")
+        "  • `@Least status` — model id, GPU, and everything this box has a "
+        "connection to")
 
 def handle(text, mentioned_names=()):
     intent, how = decide(text)
