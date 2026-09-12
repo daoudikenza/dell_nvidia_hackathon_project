@@ -4,8 +4,9 @@ Inference client. vLLM primary, Ollama fallback, both OpenAI-ish.
 Everything runs on the GB10. If this module ever reaches the internet it is a
 bug -- local-only is the product premise, not a rule we are satisfying.
 """
-import json, urllib.request, urllib.error
+import json, time, urllib.request, urllib.error
 from .config import CFG
+from . import trace
 
 class Offline(Exception): pass
 
@@ -79,7 +80,16 @@ def ask(system, prompt, _only=None):
     for spec in specs:
         try:
             fn = _vllm if spec["kind"] == "vllm" else _ollama
-            return fn(spec, system, prompt).strip()
+            if not _only:
+                trace.log("llm", f"ask  {spec['model']}",
+                          f"{len(prompt)//4} tok in · {spec['base']}")
+            t = time.time()
+            out = fn(spec, system, prompt).strip()
+            if not _only:
+                dt = time.time() - t
+                trace.log("llm", f"got  {len(out)//4} tok",
+                          f"{dt:.1f}s · {(len(out)//4)/max(dt,.01):.0f} tok/s")
+            return out
         except Exception as e:
             last = e
     raise Offline(f"no local inference backend reachable: {last}")

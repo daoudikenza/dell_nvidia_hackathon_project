@@ -7,7 +7,7 @@ machine-readable so execute.py can act on it; the body is human-readable so a
 manager can approve on understanding rather than on trust.
 """
 import datetime as dt, json, subprocess, pathlib
-from . import okta, peers, gate, llm
+from . import okta, peers, gate, llm, trace
 from .scanner import scan, TEAM_PATHS
 from .baseline import clone_a_teammate
 from .config import CFG
@@ -39,15 +39,22 @@ def owners(repo, subpath, top=4):
 
 def build(user_id, team, use_llm=True):
     repo   = CFG["repo"]
+    trace.step(f"resolving {user_id}")
     u      = okta.resolve(user_id)
     user_id = u["id"]
     prof   = u["profile"]
     paths  = TEAM_PATHS.get(team, [])
     derived     = scan(paths)
+    trace.step("peer usage — what does the team ACTUALLY use?")
     conventional= [c for c in peers.conventional(team)
                    if c["group"] not in {d["group"] for d in derived}]
+    for c in conventional:
+        trace.log("peer", f"+    {c['group']}", c["because"])
     proposed    = {d["group"] for d in derived} | {c["group"] for c in conventional}
+    trace.step("baseline — what happens today?")
     base        = clone_a_teammate(team)
+    trace.log("pkt", f"cloning {base['donor']} would grant {len(base['grants'])}",
+              "0 justified")
     sens        = {g["profile"]["name"]: g.get("_sensitivity", 0) for g in okta.groups()}
     declined    = [{"group": g,
                     "because": ("no code path requires it and fewer than 75% of the team "
@@ -55,10 +62,15 @@ def build(user_id, team, use_llm=True):
                                 "production-level access with no code path requiring it")}
                    for g in sorted(set(base["grants"]) - proposed)]
     g           = gate.check(user_id)
+    trace.log("gate", "PASS — Okta Verify enrolled" if g["passed"]
+                      else "BLOCK — no Okta Verify", ", ".join(g["factors"]))
+    for d in declined:
+        trace.log("pkt", f"-    {d['group']}", d["because"][:60])
     own         = owners(repo, paths[0]) if paths else []
 
     prose = {}
     if use_llm:
+        trace.step("writing the onboarding prose")
         facts = json.dumps({"team": team, "paths": paths, "owners": own,
                             "signals": [{"group": d["group"], "why": d["why"],
                                          "file": d["citations"][0]["file"]} for d in derived]},

@@ -93,3 +93,18 @@ find_gaps, access_drift, apply_access, find_user.
 The ordering and the refusals live in `mcp/AGENT.md`, not in code — the MFA gate
 is enforced in `agent/gate.py` too, so an agent that ignores its prompt still
 cannot route around it.
+
+## Showing the work
+
+    python3 -m agent onboard nadia billing -v
+
+Prints what the agent is doing as it does it -- files opened, HTTP calls with
+record counts and latency, each citation as it is found, each decline with its
+reason, and the model's token rate. Trace goes to stderr, so the result still
+pipes cleanly:
+
+    python3 -m agent onboard nadia billing -v 2>trace.log
+
+For the demo, run this in a second pane beside Slack. A result that appears
+instantly with nothing in between looks hardcoded; the trace is what shows it
+is not.

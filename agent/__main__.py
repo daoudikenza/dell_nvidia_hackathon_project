@@ -10,11 +10,17 @@ Least CLI.  python -m agent <command>
   crosscheck <packet.md>      docs-vs-access gaps
   approve   <packet.md> <approver-email> [--live]
   drift                       the always-on scan
+
+  -v / --verbose              show the agent's work as it happens
 """
 import sys, json, pathlib
 
 def main(argv):
     if not argv or argv[0] in ("-h", "--help"): print(__doc__); return 0
+    from . import trace
+    if "-v" in argv or "--verbose" in argv:
+        trace.on()
+        argv = [a for a in argv if a not in ("-v", "--verbose")]
     cmd, rest = argv[0], argv[1:]
 
     if cmd == "status":

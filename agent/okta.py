@@ -2,8 +2,9 @@
 Okta client. Written against the real Management API surface, so pointing it at
 a real tenant is a base-URL change plus an auth header.
 """
-import json, urllib.request
+import json, time, urllib.request
 from .config import CFG
+from . import trace
 
 BASE = CFG["okta"]
 
@@ -14,19 +15,32 @@ BASE = CFG["okta"]
 _OPENER = urllib.request.build_opener(urllib.request.ProxyHandler({}))
 
 def _get(path):
+    t = time.time()
     with _OPENER.open(f"{BASE}{path}", timeout=30) as r:
-        return json.loads(r.read())
+        body = json.loads(r.read())
+    n = len(body) if isinstance(body, list) else 1
+    trace.log("okta", f"GET  {path}", f"{n} records · {(time.time()-t)*1000:.0f}ms")
+    return body
 
 def _send(path, method, body=None):
     req = urllib.request.Request(f"{BASE}{path}", method=method,
         data=json.dumps(body).encode() if body else None,
         headers={"Content-Type": "application/json"})
     with _OPENER.open(req, timeout=30) as r:
+        trace.log("okta", f"{method} {path}", f"-> {r.status}")
         return r.status
+
+# The group list is small and effectively static within a run, but name_by_gid
+# is called once per membership -- which meant six identical GETs per packet.
+# Cached per process; call groups(fresh=True) after a write.
+_GROUPS = None
 
 def users():                 return _get("/api/v1/users")
 def user(uid):               return _get(f"/api/v1/users/{uid}")
-def groups():                return _get("/api/v1/groups")
+def groups(fresh=False):
+    global _GROUPS
+    if fresh or _GROUPS is None: _GROUPS = _get("/api/v1/groups")
+    return _GROUPS
 def user_groups(uid):        return _get(f"/api/v1/users/{uid}/groups")
 def factors(uid):            return _get(f"/api/v1/users/{uid}/factors")
 def group_users(gid):        return _get(f"/api/v1/groups/{gid}/users")

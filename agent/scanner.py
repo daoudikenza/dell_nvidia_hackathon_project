@@ -11,6 +11,7 @@ inference is deliberate -- a security team must be able to read and edit it.
 """
 import re, pathlib
 from .config import CFG
+from . import trace
 
 # signal pattern -> (group, why)   the customer-owned mapping
 POLICY = [
@@ -41,9 +42,11 @@ def _walk(root, subpaths):
 def scan(team_paths, root=None, max_files=4000):
     """Return access signals with file:line citations."""
     root = pathlib.Path(root or CFG["repo"])
+    trace.step(f"scanning {root.name} — {len(team_paths)} paths")
     hits, seen, n = {}, set(), 0
     for f in _walk(root, team_paths):
         n += 1
+        if n % 250 == 0: trace.log("scan", f"{n} files read…")
         if n > max_files: break
         try: text = f.read_text(errors="ignore")
         except Exception: continue
@@ -57,8 +60,11 @@ def scan(team_paths, root=None, max_files=4000):
                 if key in seen: continue
                 seen.add(key)
                 hits.setdefault(group, {"group": group, "why": why, "citations": []})
+                rel = str(f.relative_to(root))
+                trace.log("scan", f"HIT  {var}", f"{rel}:{line} -> {group}")
                 hits[group]["citations"].append({
-                    "var": var, "file": str(f.relative_to(root)), "line": line})
+                    "var": var, "file": rel, "line": line})
+    trace.log("scan", f"{n} files read, {len(hits)} access signals")
     for h in hits.values():
         h["citations"] = h["citations"][:3]
         c = h["citations"][0]
