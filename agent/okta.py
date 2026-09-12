@@ -2,11 +2,18 @@
 Okta client. Written against the real Management API surface, so pointing it at
 a real tenant is a base-URL change plus an auth header.
 """
-import json, time, urllib.request
+import json, os, time, urllib.request, urllib.error
 from .config import CFG
-from . import trace
+from . import trace, okta_store
 
 BASE = CFG["okta"]
+
+# "file:<path>" answers the Okta API from the JSON file directly - used inside the
+# NemoClaw sandbox, where the HTTP mock cannot run. See agent/okta_store.py.
+FILE = None
+if BASE.startswith("file:"):
+    FILE = BASE[len("file:"):]
+    if not os.path.isabs(FILE): FILE = str(CFG["_root"] / FILE)
 
 # Everything we talk to is on this machine. If the host has http_proxy /
 # https_proxy set (common on managed and event networks), urllib will route
@@ -14,7 +21,17 @@ BASE = CFG["okta"]
 # [SSL: WRONG_VERSION_NUMBER]. An explicit empty ProxyHandler opts out.
 _OPENER = urllib.request.build_opener(urllib.request.ProxyHandler({}))
 
+def _file(method, path, body=None):
+    t = time.time()
+    status, out = okta_store.handle(FILE, method, path, body)
+    if status >= 400:
+        raise urllib.error.HTTPError(f"file:{path}", status, str(out), None, None)
+    n = len(out) if isinstance(out, list) else 1
+    trace.log("okta", f"{method:<4} {path}", f"file · {n} records · {(time.time()-t)*1000:.0f}ms")
+    return status, out
+
 def _get(path):
+    if FILE: return _file("GET", path)[1]
     t = time.time()
     with _OPENER.open(f"{BASE}{path}", timeout=30) as r:
         body = json.loads(r.read())
@@ -23,6 +40,7 @@ def _get(path):
     return body
 
 def _send(path, method, body=None):
+    if FILE: return _file(method, path, body)[0]
     req = urllib.request.Request(f"{BASE}{path}", method=method,
         data=json.dumps(body).encode() if body else None,
         headers={"Content-Type": "application/json"})
@@ -49,6 +67,9 @@ def factors(uid):            return _get(f"/api/v1/users/{uid}/factors")
 def group_users(gid):        return _get(f"/api/v1/groups/{gid}/users")
 def logs(since=None):        return _get(f"/api/v1/logs" + (f"?since={since}" if since else ""))
 def create_user(first, last, team="billing", start=None, manager=None):
+    if FILE:
+        return _file("POST", "/api/v1/users", {"firstName": first, "lastName": last,
+                     "department": team, "startDate": start, "manager": manager})[1]
     req = urllib.request.Request(f"{BASE}/api/v1/users", method="POST",
         data=json.dumps({"firstName": first, "lastName": last, "department": team,
                          "startDate": start, "manager": manager}).encode(),

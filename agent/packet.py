@@ -6,7 +6,7 @@ the justification, and (once committed) the audit evidence. Frontmatter is
 machine-readable so execute.py can act on it; the body is human-readable so a
 manager can approve on understanding rather than on trust.
 """
-import datetime as dt, json, subprocess, pathlib
+import datetime as dt, json, os, subprocess, pathlib
 from . import okta, peers, gate, llm, trace
 from .scanner import scan, accounts_and_setup, TEAM_PATHS
 from .baseline import clone_a_teammate
@@ -27,7 +27,15 @@ def _strip_echoed_heading(text, title):
     return "\n".join(lines).strip()
 
 def owners(repo, subpath, top=4):
-    """Who actually owns this code, from git history."""
+    """Who actually owns this code, from git history.
+
+    A trimmed copy of the repo (as uploaded into the sandbox) carries no history,
+    so a precomputed .least-owners.json is used when present.
+    """
+    pre = pathlib.Path(repo) / ".least-owners.json"
+    if pre.exists():
+        try: return json.loads(pre.read_text()).get(subpath, [])[:top]
+        except Exception: pass
     try:
         out = subprocess.run(["git", "-C", str(repo), "log", "--format=%an", "--", subpath],
                              capture_output=True, text=True, timeout=25).stdout
@@ -38,6 +46,9 @@ def owners(repo, subpath, top=4):
         return []
 
 def build(user_id, team, use_llm=True):
+    # LEAST_NO_LLM=1 skips prose generation - set inside the sandbox, where the
+    # model server on the host is not reachable on loopback.
+    use_llm = use_llm and not os.environ.get("LEAST_NO_LLM")
     repo   = CFG["repo"]
     trace.step(f"resolving {user_id}")
     u      = okta.resolve(user_id)
