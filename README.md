@@ -59,7 +59,8 @@ error, never a silent cloud call.
     python3 -m agent crosscheck packets/nadia-rahimi.md
     python3 -m agent approve  packets/nadia-rahimi.md sarah.chen@cal.example.com
     python3 -m agent drift                       # the always-on scan
-    python3 loop/daemon.py 3600                  # the always-on loop
+    python3 loop/daemon.py 900                   # the always-on loop
+    python3 -m agent journal                     # what it did unprompted
 
 Re-run `python3 services/mock_okta/seed.py` to reset between rehearsals.
 

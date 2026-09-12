@@ -2,3 +2,4 @@ __pycache__/
 *.pyc
 .loop-state.json
 .venv/
+loop/.state.json

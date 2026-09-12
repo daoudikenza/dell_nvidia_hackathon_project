@@ -10,6 +10,7 @@ Least CLI.  python -m agent <command>
   crosscheck <packet.md>      docs-vs-access gaps
   approve   <packet.md> <approver-email> [--live]
   drift                       the always-on scan
+  journal                     what the agent did while nobody was watching
 
   -v / --verbose              show the agent's work as it happens
 """
@@ -136,6 +137,15 @@ def main(argv):
         if res["failed"]: print(f'  failed   : {res["failed"]}')
         pr = open_pr(path, email, groups, dry_run="--live" not in rest)
         print(f'  PR       : {"DRY RUN — " if pr.get("dry_run") else ""}branch {pr.get("branch","-")}')
+        return 0
+
+    if cmd == "journal":
+        from .config import CFG
+        j = CFG["_root"] / "loop" / "journal.md"
+        if not j.exists():
+            print("  nothing yet — start the loop:  python3 loop/daemon.py 900")
+            return 0
+        print(j.read_text())
         return 0
 
     if cmd == "drift":

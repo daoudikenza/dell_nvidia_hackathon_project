@@ -4,7 +4,7 @@ name: Nadia Rahimi
 team: billing
 start_date: 2026-09-14
 manager: sarah.chen@cal.example.com
-generated: 2026-09-12T17:18:27Z
+generated: 2026-09-12T17:21:12Z
 model: nvidia/Qwen3.6-35B-A3B-NVFP4   # on-box, no network
 status: awaiting-approval
 access:
