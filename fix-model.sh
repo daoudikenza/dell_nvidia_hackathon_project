@@ -42,7 +42,7 @@ if not served:
 
 p = pathlib.Path("config.yaml"); s = p.read_text()
 newline = (f'  primary:  {{kind: vllm, base: "{base}", model: "{served}"'
-           + (f', api_key: "{key}"' if key else "") + "}}")
+           + (f', api_key: "{key}"' if key else "") + "}")
 s2 = re.sub(r"^\s*primary:.*$", newline, s, count=1, flags=re.M)
 if s2 == s:
     print("\nCould not rewrite config.yaml automatically. Set these by hand:")
