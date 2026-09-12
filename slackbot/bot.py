@@ -16,7 +16,19 @@ Approve button. Clicking Approve provisions the access.
 Socket Mode: outbound websocket, no public URL, works on venue wifi.
 Inference stays on the GB10; only message text crosses to Slack.
 """
-import os, re, sys, threading
+import os, re, sys, threading, pathlib
+
+def _load_env():
+    """Read KEY=VALUE from a gitignored .env so tokens survive a new terminal."""
+    env = pathlib.Path(__file__).resolve().parent.parent / ".env"
+    if not env.exists(): return
+    for line in env.read_text().splitlines():
+        line = line.strip()
+        if not line or line.startswith("#") or "=" not in line: continue
+        k, v = line.split("=", 1)
+        os.environ.setdefault(k.strip(), v.strip().strip('"').strip("'"))
+_load_env()
+
 from slack_bolt import App
 from slack_bolt.adapter.socket_mode import SocketModeHandler
 from slackbot import core

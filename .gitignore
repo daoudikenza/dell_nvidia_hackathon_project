@@ -9,3 +9,7 @@ loop/.state.json
 # `approve` force-adds the specific packet a human signed off on.
 packets/*.md
 services/mock_okta/*.tmp
+
+# secrets and generated state - never commit
+.env
+loop/journal.md
