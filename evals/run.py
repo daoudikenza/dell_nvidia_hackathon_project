@@ -28,7 +28,6 @@ the product makes that a judge would otherwise have to take on trust:
 A case that cannot run says SKIP and why. It never says PASS. A harness that
 goes green when the thing it tests is absent is worse than no harness.
 """
-import io
 import json
 import pathlib
 import re
@@ -318,7 +317,6 @@ def stable_ids():
 @case("DETERMINISM", "both directory backends agree on a person's id")
 def backends_agree():
     import hashlib
-    from agent import okta_store  # noqa: F401
     email = "test.person@cal.example.com"
     expected = "00u" + hashlib.sha256(email.encode()).hexdigest()[:8]
     src = (ROOT / "agent/okta_store.py").read_text()
@@ -354,7 +352,7 @@ def main():
         print()
         return 2
 
-    print(f"\n  Least — evaluation harness")
+    print("\n  Least — evaluation harness")
     print(f"  repo: {CFG['repo']}")
     print(f"  {'':-<74}")
     print(f"  {'':<12} {'':<50} {'':<8}")

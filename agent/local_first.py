@@ -136,7 +136,8 @@ def report():
     L = ["LOCAL-FIRST — evidence, not assertion", ""]
 
     L.append("1. Inference endpoints (model id read back from the endpoint itself)")
-    for e in inference():
+    endpoints = inference()          # probed once; each call is a live HTTP round trip
+    for e in endpoints:
         where = "loopback" if e["loopback"] else "OFF-BOX"
         if not e["reachable"]:
             L.append(f"   {e['role']:<9} {e['kind']:<7} {e['base']}  [{where}]  nothing responding")
@@ -146,8 +147,8 @@ def report():
         L.append(f"             serving: {serving}")
         if e["serving"] and e["configured"] not in e["serving"]:
             L.append(f"             configured as {e['configured']} — MISMATCH")
-    off = [e for e in inference() if not e["loopback"]]
-    L.append(f"   -> every inference endpoint is on loopback" if not off
+    off = [e for e in endpoints if not e["loopback"]]
+    L.append("   -> every inference endpoint is on loopback" if not off
              else f"   -> {len(off)} inference endpoint(s) are NOT on loopback")
     L.append("")
 
