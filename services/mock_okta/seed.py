@@ -5,7 +5,7 @@ The seed IS the demo. Over-provisioning is planted deliberately so the agent
 has real findings to surface on stage. Every planted problem below is a thing
 that happens at every real company.
 """
-import json, random, datetime as dt, pathlib
+import hashlib, json, random, datetime as dt, pathlib
 
 random.seed(42)                      # reproducible demos
 NOW = dt.datetime(2026, 9, 12, 9, 0, 0)
@@ -55,8 +55,20 @@ def iso(d): return d.strftime("%Y-%m-%dT%H:%M:%S.000Z")
 
 users, groups, memberships, logs = [], [], [], []
 
+def stable_id(prefix, key):
+    """
+    A group id that is the same on every machine, every process, every reseed.
+
+    Python's hash() is randomised per process unless PYTHONHASHSEED is set, so
+    the previous derivation handed out different ids on every run despite the
+    random.seed(42) above. Anything holding an id across a reseed -- the Slack
+    bot, the MCP server, the daemon -- then resolved names to ids that no longer
+    existed, and the failure surfaced as an opaque 404 that read like an outage.
+    """
+    return prefix + hashlib.sha256(key.encode()).hexdigest()[:8]
+
 for gid,(desc,sens) in GROUPS.items():
-    groups.append({"id": f"grp{abs(hash(gid))%10**8:08d}", "profile":
+    groups.append({"id": stable_id("grp", gid), "profile":
                    {"name": gid, "description": desc},
                    "_sensitivity": sens, "type": "OKTA_GROUP"})
 GID = {g["profile"]["name"]: g["id"] for g in groups}

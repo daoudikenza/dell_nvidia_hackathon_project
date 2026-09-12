@@ -7,7 +7,7 @@ Agent code written against this runs unchanged against a real tenant.
 
   uvicorn services.mock_okta.app:app --port 8081
 """
-import json, os, pathlib, datetime as dt
+import hashlib, json, os, pathlib, datetime as dt
 from fastapi import FastAPI, HTTPException, Response
 from pydantic import BaseModel
 
@@ -100,7 +100,9 @@ def create_user(h: NewHire):
     """
     d = load()
     email = h.email or f"{h.firstName.lower()}.{h.lastName.lower()}@cal.example.com"
-    uid = "00u" + str(abs(hash(email)) % 10**8).zfill(8)
+    # Same reason as seed.py's stable_id: hash() is randomised per process, so
+    # staging the same person twice used to produce two different ids.
+    uid = "00u" + hashlib.sha256(email.encode()).hexdigest()[:8]
     if any(u["id"] == uid for u in d["users"]): raise HTTPException(409, "already exists")
     u = {"id": uid, "status": "STAGED", "created": now(),
          "profile": {"firstName": h.firstName, "lastName": h.lastName,

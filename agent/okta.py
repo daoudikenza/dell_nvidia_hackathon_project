@@ -30,17 +30,20 @@ def _send(path, method, body=None):
         trace.log("okta", f"{method} {path}", f"-> {r.status}")
         return r.status
 
-# The group list is small and effectively static within a run, but name_by_gid
-# is called once per membership -- which meant six identical GETs per packet.
-# Cached per process; call groups(fresh=True) after a write.
-_GROUPS = None
-
 def users():                 return _get("/api/v1/users")
 def user(uid):               return _get(f"/api/v1/users/{uid}")
 def groups(fresh=False):
-    global _GROUPS
-    if fresh or _GROUPS is None: _GROUPS = _get("/api/v1/groups")
-    return _GROUPS
+    """
+    Always a live read.
+
+    This was cached in a module-level _GROUPS for the process lifetime, to save
+    six identical GETs per packet. Twenty records off localhost is not worth the
+    failure it bought: the Slack bot, the MCP server and the daemon all outlive
+    a reseed, and a cache of dead ids turns every later grant into a 404 that
+    reads like the directory being down. `fresh` is kept so existing callers
+    still work; it makes no difference now.
+    """
+    return _get("/api/v1/groups")
 def user_groups(uid):        return _get(f"/api/v1/users/{uid}/groups")
 def factors(uid):            return _get(f"/api/v1/users/{uid}/factors")
 def group_users(gid):        return _get(f"/api/v1/groups/{gid}/users")
