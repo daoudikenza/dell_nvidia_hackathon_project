@@ -3,10 +3,30 @@
 set -uo pipefail
 cd "$(dirname "$0")"
 
+# Ubuntu refuses pip into system python (PEP 668), so a local .venv is the
+# normal outcome. Find it rather than making every command depend on the user
+# having remembered to activate it.
+if [ -x ".venv/bin/python" ]; then
+  PY=".venv/bin/python"
+elif [ -n "${VIRTUAL_ENV:-}" ]; then
+  PY="$VIRTUAL_ENV/bin/python"
+else
+  PY="python3"
+fi
+echo "python: $PY"
+
+if ! "$PY" -c "import yaml, fastapi" 2>/dev/null; then
+  echo
+  echo "  dependencies missing. Run:"
+  echo "    python3 -m venv .venv && .venv/bin/pip install -r requirements.txt"
+  echo
+  exit 1
+fi
+
 echo "== mock Okta :8081 =="
 pkill -f "uvicorn services.mock_okta" 2>/dev/null
-python3 services/mock_okta/seed.py
-(uvicorn services.mock_okta.app:app --port 8081 --log-level warning &)
+"$PY" services/mock_okta/seed.py
+("$PY" -m uvicorn services.mock_okta.app:app --port 8081 --log-level warning &)
 
 echo "== Vault dev :8200 =="
 if command -v vault >/dev/null; then
@@ -31,4 +51,4 @@ fi
 
 sleep 2
 echo
-python3 -m agent status
+"$PY" -m agent status

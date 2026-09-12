@@ -8,9 +8,13 @@
 set -uo pipefail
 cd "$(dirname "$0")"
 
-PY_BIN="${PYTHON:-python3}"
+if   [ -x ".venv/bin/python" ];  then PY_BIN="${PYTHON:-.venv/bin/python}"
+elif [ -n "${VIRTUAL_ENV:-}" ];  then PY_BIN="${PYTHON:-$VIRTUAL_ENV/bin/python}"
+else                                  PY_BIN="${PYTHON:-python3}"
+fi
 if ! "$PY_BIN" -c "import yaml" 2>/dev/null; then
-  echo "dependencies missing. run first:  pip3 install -r requirements.txt"
+  echo "dependencies missing. run first:"
+  echo "    python3 -m venv .venv && .venv/bin/pip install -r requirements.txt"
   echo "(or set PYTHON=/path/to/python if you use a venv)"
   exit 1
 fi

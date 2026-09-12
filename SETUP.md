@@ -12,7 +12,24 @@ No Slack, no OpenClaw, no agent. Just the code.
 
     git clone https://github.com/daoudikenza/dell_nvidia_hackathon_project.git
     cd dell_nvidia_hackathon_project
-    pip3 install -r requirements.txt
+    python3 -m venv .venv
+    .venv/bin/pip install -r requirements.txt
+
+Ubuntu refuses `pip3 install` into system python (PEP 668:
+"externally-managed-environment"), so use a venv. `run.sh` and
+`setup-demo-repo.sh` find `.venv` on their own - you do not have to activate it.
+
+For bare `python3 -m agent ...` commands either activate it:
+
+    source .venv/bin/activate
+
+or call the interpreter directly: `.venv/bin/python -m agent status`.
+
+**The one place this matters later:** `mcporter` spawns the MCP server itself
+and will use system python unless told otherwise. Register it with the venv
+interpreter or it fails with missing modules and no obvious cause:
+
+    mcporter add least -- $PWD/.venv/bin/python $PWD/mcp/server.py
 
 ### Get the demo codebase
 
