@@ -91,9 +91,11 @@ Verify the server independently of OpenClaw:
 Nine tools: current_practice, scan_repo, peer_usage, check_mfa, build_packet,
 find_gaps, access_drift, apply_access, find_user.
 
-The ordering and the refusals live in `mcp/AGENT.md`, not in code — the MFA gate
-is enforced in `agent/gate.py` too, so an agent that ignores its prompt still
-cannot route around it.
+The ordering lives in `mcp/AGENT.md`. The refusals do not: `apply_access` routes
+through `agent/execute.py` `approve()`, which re-reads the packet, re-runs the
+MFA gate against the directory, refuses self-approval, and refuses an approver
+the packet does not name. A model that ignores its prompt and calls
+`apply_access` directly gets refused by the same code that refuses a human.
 
 ## Showing the work
 

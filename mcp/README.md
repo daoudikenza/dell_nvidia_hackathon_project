@@ -40,9 +40,18 @@ reads every turn whether or not a system prompt loaded:
   * `scan_repo` - "These are FACTS from the repository -- never invent or
     paraphrase a citation."
 
-And the gate is enforced in `agent/gate.py` regardless of what the model
-decides, so an agent that never reads a single instruction still cannot route
-around it.
+Those descriptions are guidance, and guidance is not a control. The control is
+`agent/execute.py` `approve()`, which every grant goes through -- the Slack
+button, `python3 -m agent approve`, and the `apply_access` tool. Before anything
+reaches the directory it re-reads the packet from disk, re-runs the MFA gate
+against the live directory rather than trusting the packet's own status line,
+refuses a subject approving their own access, refuses an approver the packet
+does not name, and refuses a packet path that resolves outside `packets/`.
+
+So an agent that never reads a single instruction still cannot route around it,
+and neither can a human who clicks the wrong button.
 
 Worth saying out loud in Q&A: prompt rules are guidance, the code check is the
-control.
+control. `tests/test_approval.py` is the demonstration -- seventeen cases, each
+asserting that nothing reached the directory, not merely that a refusal was
+printed.

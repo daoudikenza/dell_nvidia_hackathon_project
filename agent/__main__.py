@@ -154,20 +154,26 @@ def main(argv):
         return 0
 
     if cmd == "approve":
-        from .execute import parse_frontmatter_groups, apply, open_pr
-        from . import okta
-        path = pathlib.Path(rest[0]); md = path.read_text()
-        approver = rest[1]
-        fm = parse_frontmatter_groups(md)
-        groups = fm["derived"] + fm["conventional"]
-        email = next((l.split(":",1)[1].strip() for l in md.splitlines()
-                      if l.startswith("subject:")), "")
-        uid = next((u["id"] for u in okta.users() if u["profile"]["login"] == email), None)
-        res = apply(uid, groups, approver, path.name)
-        print(f'  applied  : {", ".join(res["applied"]) or "-"}')
+        from . import execute
+        # Same chokepoint the Slack button and the MCP tool go through, so the
+        # gate, the self-approval refusal and the approver check are identical
+        # on every surface rather than reimplemented per caller.
+        who = execute.Approver(email=rest[1], source="cli", display=rest[1])
+        try:
+            res = execute.approve(rest[0], who)
+        except execute.Refused as r:
+            print(f'\n  REFUSED ({r.code})')
+            print(f'  {r.message}\n')
+            return 1
+        print(f'  subject  : {res["name"]} <{res["subject"]}>')
+        print(f'  approver : {res["approver_email"]}')
+        print(f'  applied  : {", ".join(res["applied"]) or "-"}  '
+              f'({res["before"]} -> {res["after"]} groups)')
         if res["failed"]: print(f'  failed   : {res["failed"]}')
-        pr = open_pr(path, email, groups, dry_run="--live" not in rest)
-        print(f'  PR       : {"DRY RUN — " if pr.get("dry_run") else ""}branch {pr.get("branch","-")}')
+        pr = execute.open_pr(res["path"], res["subject"], res["applied"],
+                             dry_run="--live" not in rest)
+        print(f'  PR       : {"DRAFTED, NOT FILED — " if pr.get("dry_run") else ""}'
+              f'branch {pr.get("branch","-")}')
         return 0
 
     if cmd == "journal":

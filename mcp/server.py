@@ -141,15 +141,21 @@ def call(name, a):
                 "elevated":   [f for f in fs if f["sensitivity"] == 1][:5]}
 
     if name == "apply_access":
-        md_path = CFG["_root"] / a["packet"]; md = md_path.read_text()
-        fm = execute.parse_frontmatter_groups(md)
-        groups = fm["derived"] + fm["conventional"]
-        email = next((l.split(":",1)[1].strip() for l in md.splitlines()
-                      if l.startswith("subject:")), "")
-        uid = next((u["id"] for u in okta.users() if u["profile"]["login"] == email), None)
-        res = execute.apply(uid, groups, a["approver"], md_path.name)
-        pr  = execute.open_pr(md_path, email, groups, dry_run=True)
-        return {**res, "pr_branch": pr.get("branch")}
+        # Routed through execute.approve, not execute.apply. The model is not
+        # trusted to have checked the gate, the approver, or self-approval --
+        # the code checks, and refuses the model as readily as anyone else.
+        who = execute.Approver(email=a["approver"], source="mcp", display=a["approver"])
+        try:
+            res = execute.approve(a["packet"], who)
+        except execute.Refused as r:
+            return {"applied": [], "refused": r.code, "reason": r.message,
+                    "note": "Nothing was granted. This is a refusal, not an error."}
+        pr = execute.open_pr(res["path"], res["subject"], res["applied"], dry_run=True)
+        return {"applied": res["applied"], "failed": res["failed"],
+                "subject": res["subject"], "approver": res["approver_email"],
+                "groups_before": res["before"], "groups_after": res["after"],
+                "pr_branch": pr.get("branch"),
+                "pr_status": "drafted, not filed"}
 
     if name == "enroll_mfa":
         u = okta.resolve(a["user_id"]); prof = u["profile"]

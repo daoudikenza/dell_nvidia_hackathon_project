@@ -32,6 +32,7 @@ _load_env()
 from slack_bolt import App
 from slack_bolt.adapter.socket_mode import SocketModeHandler
 from slackbot import core
+from agent import execute
 
 app = App(token=os.environ["SLACK_BOT_TOKEN"])
 MENTION = re.compile(r"<@([A-Z0-9]+)(?:\|[^>]*)?>")
@@ -97,16 +98,43 @@ def on_mention(event, client, say):
                                 text=r["text"][:3000], blocks=sections(r["text"]) + buttons(r))
     threading.Thread(target=work, daemon=True).start()
 
+def approver_of(client, user_id):
+    """
+    Who clicked, as an identity rather than a label.
+
+    A workspace member sets their own display name, so it can read "Sarah Chen"
+    whoever they are. The email on the Slack profile is set by the workspace, so
+    that is what is matched against the packet and what goes in the audit record.
+    """
+    email = None
+    try:
+        email = client.users_info(user=user_id)["user"]["profile"].get("email")
+    except Exception:
+        pass
+    return execute.Approver(email=email, source="slack", slack_id=user_id,
+                            display=display_name(client, user_id) or user_id)
+
+
 @app.action("approve_access")
 def on_approve(ack, body, client):
     ack()
-    approver = display_name(client, body["user"]["id"]) or body["user"]["id"]
-    r = core.approve(body["actions"][0]["value"], approver)
     channel = body["channel"]["id"]
     msg = body["message"]
+    thread = msg.get("thread_ts") or msg["ts"]
+    try:
+        r = core.approve(body["actions"][0]["value"], approver_of(client, body["user"]["id"]))
+    except Exception as e:
+        r = {"text": core.explain_failure(e), "refused": "error"}
+
+    if r.get("refused"):
+        # A refusal is about the person who clicked, so it goes to them only.
+        # The buttons stay: the right approver has not acted yet.
+        client.chat_postEphemeral(channel=channel, user=body["user"]["id"],
+                                  thread_ts=thread, text=r["text"])
+        return
     client.chat_update(channel=channel, ts=msg["ts"], text=msg.get("text", ""),
                        blocks=[b for b in msg.get("blocks", []) if b.get("type") != "actions"])
-    client.chat_postMessage(channel=channel, thread_ts=msg.get("thread_ts") or msg["ts"], text=r["text"])
+    client.chat_postMessage(channel=channel, thread_ts=thread, text=r["text"])
 
 @app.action("recheck_mfa")
 def on_recheck(ack, body, client):

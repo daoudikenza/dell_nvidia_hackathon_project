@@ -17,3 +17,9 @@ thresholds:
 
 slack:
   approval_channel: "#onboarding"
+
+# Who may approve a packet, on top of the manager named in that packet's own
+# frontmatter. A security or IAM team lives here. Anyone else who clicks Approve
+# is refused and told who to ask.
+approvers:
+  - security@cal.example.com
