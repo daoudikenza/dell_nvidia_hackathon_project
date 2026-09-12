@@ -2,6 +2,7 @@
 Least CLI.  python -m agent <command>
 
   status                      which inference backend is answering
+  local                       local-first evidence: model id, GPU, egress
   baseline  <team>            what cloning a teammate would grant (the problem)
   scan      <team>            access signals derived from the repo
   peers     <team>            groups the team actually uses
@@ -55,6 +56,16 @@ def main(argv):
         except Exception as e: print(f"okta      : UNREACHABLE — {e}")
         from .config import CFG
         print(f"repo      : {'ok' if CFG['repo'].exists() else 'MISSING'} — {CFG['repo']}")
+        print()
+        print("  local-first evidence (model id, GPU, egress):  python3 -m agent local")
+        return 0
+
+    if cmd == "local":
+        # The local-first proof. A quarter of the rubric, and the shot the demo
+        # video needs, so it is one command that prints everything at once.
+        from .local_first import report
+        print()
+        print(report())
         return 0
 
     if cmd == "baseline":

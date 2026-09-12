@@ -51,6 +51,12 @@ def directory(monkeypatch):
     def gid_by_name(name):
         return next((g["id"] for g in GROUPS if g["profile"]["name"] == name), None)
 
+    def user_groups(uid):
+        """Derived from what was assigned, so before/after counts are real."""
+        held = {a["gid"] for a in state["assigned"] if a["uid"] == uid}
+        return [g for g in GROUPS if g["id"] in held]
+
+    monkeypatch.setattr(okta, "user_groups", user_groups)
     monkeypatch.setattr(okta, "users", users)
     monkeypatch.setattr(okta, "factors", factors)
     monkeypatch.setattr(okta, "assign", assign)

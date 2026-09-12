@@ -29,6 +29,7 @@ def test_enrolled_subject_approved_by_manager_is_granted(directory, packet):
     res = execute.approve(packet, approver(MANAGER))
     assert sorted(res["applied"]) == ["db-staging-read", "eng-billing"]
     assert len(directory["assigned"]) == 2
+    assert (res["before"], res["after"]) == (0, 2)
 
 
 def test_declined_groups_are_never_applied(directory, packet):

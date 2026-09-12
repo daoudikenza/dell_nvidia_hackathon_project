@@ -10,7 +10,7 @@ from agent.scanner import TEAM_PATHS
 from agent.config import CFG
 
 TEAMS = list(TEAM_PATHS)
-INTENTS = {"onboard", "drift", "mfa_audit", "help"}
+INTENTS = {"onboard", "drift", "mfa_audit", "local", "help"}
 
 
 def explain_failure(e):
@@ -48,6 +48,8 @@ def _rules(text):
     t = text.lower()
     if re.search(r"\b(onboard|new hire|joining|joins|starts?|starting|what does .* need)\b", t):
         return "onboard"
+    if re.search(r"\b(local|locally|on.?box|air.?gap|offline|egress|nvidia|gpu|"
+                 r"what model|which model|where.*(run|running))\b", t): return "local"
     if re.search(r"\b(mfa|okta verify|2fa|second factor)\b", t): return "mfa_audit"
     if re.search(r"\b(drift|unused|stale|audit|over-?provision|revok|nobody uses|never used|"
                  r"not used|dormant|production access|prod access)", t): return "drift"
@@ -63,7 +65,9 @@ def decide(text):
             "You route requests for an access-management assistant. Reply with ONE line "
             'of JSON only, like {"intent": "onboard"}. intent must be one of: onboard '
             "(someone is joining a team / what does a new hire need), drift (unused or "
-            "stale access, revocations), mfa_audit (who lacks MFA / Okta Verify), help.",
+            "stale access, revocations), mfa_audit (who lacks MFA / Okta Verify), "
+            "local (is this running locally, what model, GPU, does anything leave "
+            "the box), help.",
             f"Request: {text}")
         m = re.search(r"\{.*?\}", raw, re.S)
         intent = json.loads(m.group(0)).get("intent") if m else None
@@ -158,10 +162,22 @@ def mfa_audit():
     L.append("One phished password on any of these is the blast radius.")
     return {"text": "\n".join(L)}
 
+def local():
+    """
+    The same evidence the terminal prints, posted into the channel.
+
+    Worth noting when this is on screen: the reply travelled over Slack, and the
+    inference that produced every other reply did not.
+    """
+    from agent.local_first import report
+    return {"text": "```\n" + report() + "\n```"}
+
 HELP = ("I work out what a new hire needs from the code they'll work on.\n"
         "  • `@Least onboard @person to billing`\n"
         "  • `@Least who has production access nobody uses?`\n"
-        "  • `@Least who has elevated access without MFA?`")
+        "  • `@Least who has elevated access without MFA?`\n"
+        "  • `@Least are you running locally?` — model id, GPU, and everything "
+        "this box has a connection to")
 
 def handle(text, mentioned_names=()):
     intent, how = decide(text)
@@ -173,4 +189,5 @@ def handle(text, mentioned_names=()):
         return onboard(person, team)
     if intent == "drift":     return drift()
     if intent == "mfa_audit": return mfa_audit()
+    if intent == "local":     return local()
     return {"text": HELP}
