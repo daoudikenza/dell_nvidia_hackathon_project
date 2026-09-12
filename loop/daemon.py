@@ -39,11 +39,21 @@ def repo_head():
                        capture_output=True, text=True)
     return r.stdout.strip()[:12]
 
+def read_org(attempts=4):
+    """The API server rewrites this file; retry rather than die on a torn read."""
+    path = CFG["_root"] / "services/mock_okta/org.json"
+    for i in range(attempts):
+        try:
+            return json.loads(path.read_text())
+        except json.JSONDecodeError:
+            if i == attempts - 1: raise
+            time.sleep(0.4)
+
 def tick(st):
     acted = False
 
     # 1. production-level access nobody is using
-    org = json.loads((CFG["_root"] / "services/mock_okta/org.json").read_text())
+    org = read_org()
     fs   = analyse(org, CFG["thresholds"]["drift_unused_days"])
     prod = [f for f in fs if f["sensitivity"] == 2]
     sig  = sorted(f'{f["group"]}:{f["userId"]}' for f in prod)

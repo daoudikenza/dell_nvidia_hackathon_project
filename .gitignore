@@ -8,3 +8,4 @@ loop/.state.json
 # copy means a conflict on every pull. The audit-trail story is unaffected:
 # `approve` force-adds the specific packet a human signed off on.
 packets/*.md
+services/mock_okta/*.tmp

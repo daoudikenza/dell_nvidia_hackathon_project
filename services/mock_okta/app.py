@@ -7,7 +7,7 @@ Agent code written against this runs unchanged against a real tenant.
 
   uvicorn services.mock_okta.app:app --port 8081
 """
-import json, pathlib, datetime as dt
+import json, os, pathlib, datetime as dt
 from fastapi import FastAPI, HTTPException, Response
 from pydantic import BaseModel
 
@@ -15,7 +15,20 @@ DB = pathlib.Path(__file__).parent / "org.json"
 app = FastAPI(title="mock-okta", version="1.0")
 
 def load():  return json.loads(DB.read_text())
-def save(d): DB.write_text(json.dumps(d, indent=2))
+
+def save(d):
+    """
+    Atomic write.
+
+    write_text() truncates then writes, so a concurrent reader (the daemon polls
+    this same file) can observe a half-written document and fail with a JSON
+    delimiter error. Writing to a temp file in the same directory and renaming
+    makes the swap atomic - a reader sees either the old file or the new one,
+    never a partial one.
+    """
+    tmp = DB.with_suffix(".json.tmp")
+    tmp.write_text(json.dumps(d, indent=2))
+    os.replace(tmp, DB)
 def now():   return dt.datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S.000Z")
 
 def pub(u):   # strip internal fields, mirror real Okta user shape
