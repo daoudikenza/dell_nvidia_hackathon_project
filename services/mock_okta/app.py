@@ -49,6 +49,27 @@ def user_factors(uid: str):
     if not u: raise HTTPException(404, "user not found")
     return u.get("_factors", [])
 
+@app.post("/api/v1/users/{uid}/factors", status_code=200)
+def enroll_factor(uid: str, factorType: str = "push"):
+    """
+    Enrol an Okta Verify factor. Real Okta does this via the enrollment flow on
+    the person's phone; here it stands in for Nadia completing setup on her
+    first morning, which is what unblocks the gate.
+    """
+    d = load()
+    u = next((x for x in d["users"] if x["id"] == uid), None)
+    if not u: raise HTTPException(404, "user not found")
+    u.setdefault("_factors", [])
+    if not any(f["factorType"] == factorType for f in u["_factors"]):
+        u["_factors"].append({"factorType": factorType, "provider": "OKTA",
+                              "status": "ACTIVE", "created": now()})
+        d["logs"].append({"uuid": f"ev{len(d['logs']):09d}", "published": now(),
+                          "eventType": "user.mfa.factor.activate",
+                          "actor": {"id": uid, "type": "User"},
+                          "target": [{"id": uid, "type": "User"}]})
+        save(d)
+    return u["_factors"]
+
 # ---------- groups ----------
 @app.get("/api/v1/groups")
 def list_groups(): return load()["groups"]

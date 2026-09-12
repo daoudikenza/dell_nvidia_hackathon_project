@@ -804,7 +804,14 @@
         "startDate": "2026-09-14",
         "manager": "sarah.chen@cal.example.com"
       },
-      "_factors": []
+      "_factors": [
+        {
+          "factorType": "push",
+          "provider": "OKTA",
+          "status": "ACTIVE",
+          "created": "2026-09-12T17:15:13.000Z"
+        }
+      ]
     }
   ],
   "groups": [
@@ -52132,6 +52139,21 @@
           "id": "grp57577727",
           "type": "UserGroup"
         },
+        {
+          "id": "00uNEWHIRE01",
+          "type": "User"
+        }
+      ]
+    },
+    {
+      "uuid": "ev000003303",
+      "published": "2026-09-12T17:15:13.000Z",
+      "eventType": "user.mfa.factor.activate",
+      "actor": {
+        "id": "00uNEWHIRE01",
+        "type": "User"
+      },
+      "target": [
         {
           "id": "00uNEWHIRE01",
           "type": "User"

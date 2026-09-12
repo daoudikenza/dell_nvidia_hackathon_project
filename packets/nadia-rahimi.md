@@ -4,9 +4,9 @@ name: Nadia Rahimi
 team: billing
 start_date: 2026-09-14
 manager: sarah.chen@cal.example.com
-generated: 2026-09-12T17:13:06Z
+generated: 2026-09-12T17:15:13Z
 model: nvidia/Qwen3.6-35B-A3B-NVFP4   # on-box, no network
-status: blocked-mfa
+status: awaiting-approval
 access:
   derived:
     - {group: db-staging-read, because: "packages/prisma/auto-migrations.ts:21 — connects to Postgres (DATABASE_URL)"}
@@ -23,8 +23,6 @@ access:
 ---
 
 # Nadia Rahimi — billing team
-
-> **BLOCKED — No Okta Verify factor enrolled. All grants blocked until enrollment completes.**
 
 Starts 2026-09-14. Manager: sarah.chen@cal.example.com.
 

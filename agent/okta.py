@@ -31,6 +31,9 @@ def user_groups(uid):        return _get(f"/api/v1/users/{uid}/groups")
 def factors(uid):            return _get(f"/api/v1/users/{uid}/factors")
 def group_users(gid):        return _get(f"/api/v1/groups/{gid}/users")
 def logs(since=None):        return _get(f"/api/v1/logs" + (f"?since={since}" if since else ""))
+def enroll_factor(uid, factor="push"):
+    return _send(f"/api/v1/users/{uid}/factors?factorType={factor}", "POST")
+
 def assign(gid, uid, why=None, by=None):
     return _send(f"/api/v1/groups/{gid}/users/{uid}", "PUT",
                  {"justification": why, "approvedBy": by})

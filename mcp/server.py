@@ -63,6 +63,12 @@ TOOLS = [
    "inputSchema": {"type":"object","properties":{
        "packet":{"type":"string"},"approver":{"type":"string"}},"required":["packet","approver"]}},
 
+  {"name": "enroll_mfa",
+   "description": ("Record that a person has completed Okta Verify enrollment. "
+                   "Only call this when a human states the person has enrolled -- "
+                   "never to get past a failing check_mfa on your own initiative."),
+   "inputSchema": {"type":"object","properties":{"user_id":{"type":"string"}},"required":["user_id"]}},
+
   {"name": "find_user",
    "description": "Look up a person by name or email. Returns their Okta id and team.",
    "inputSchema": {"type":"object","properties":{"q":{"type":"string"}},"required":["q"]}},
@@ -121,6 +127,10 @@ def call(name, a):
         res = execute.apply(uid, groups, a["approver"], md_path.name)
         pr  = execute.open_pr(md_path, email, groups, dry_run=True)
         return {**res, "pr_branch": pr.get("branch")}
+
+    if name == "enroll_mfa":
+        u = okta.resolve(a["user_id"]); okta.enroll_factor(u["id"])
+        return {"user": u["profile"]["login"], **gate.check(u["id"])}
 
     if name == "find_user":
         q = a["q"].lower()

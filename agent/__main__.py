@@ -5,7 +5,8 @@ Least CLI.  python -m agent <command>
   baseline  <team>            what cloning a teammate would grant (the problem)
   scan      <team>            access signals derived from the repo
   peers     <team>            groups the team actually uses
-  onboard   <user_id> <team>  build the packet
+  onboard   <who> <team>      build the packet (name, email or id)
+  enroll    <who>             simulate the person completing Okta Verify setup
   crosscheck <packet.md>      docs-vs-access gaps
   approve   <packet.md> <approver-email> [--live]
   drift                       the always-on scan
@@ -91,6 +92,16 @@ def main(argv):
         print(f'  {n} proposed · {len(p["declined"])} declined · '
               f'gate {"PASS" if p["gate"]["passed"] else "BLOCK"}')
         if not p["gate"]["passed"]: print(f'  {p["gate"]["reason"]}')
+        return 0
+
+    if cmd == "enroll":
+        from . import okta, gate
+        u = okta.resolve(rest[0])
+        okta.enroll_factor(u["id"])
+        g = gate.check(u["id"])
+        print(f'  {u["profile"]["firstName"]} {u["profile"]["lastName"]} — '
+              f'Okta Verify {"ENROLLED" if g["passed"] else "still missing"} '
+              f'({", ".join(g["factors"]) or "none"})')
         return 0
 
     if cmd == "crosscheck":
