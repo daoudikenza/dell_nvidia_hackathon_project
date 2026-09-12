@@ -105,7 +105,9 @@ def call(name, a):
         return {"conventional": peers.conventional(a["team"])}
 
     if name == "check_mfa":
-        return gate.check(okta.resolve(a["user_id"])["id"])
+        u = okta.resolve(a["user_id"]); prof = u["profile"]
+        return gate.check(u["id"], person=f'{prof["firstName"]} {prof["lastName"]}',
+                          handle=prof["login"])
 
     if name == "onboarding_brief":
         from agent import brief
@@ -150,8 +152,11 @@ def call(name, a):
         return {**res, "pr_branch": pr.get("branch")}
 
     if name == "enroll_mfa":
-        u = okta.resolve(a["user_id"]); okta.enroll_factor(u["id"])
-        return {"user": u["profile"]["login"], **gate.check(u["id"])}
+        u = okta.resolve(a["user_id"]); prof = u["profile"]
+        okta.enroll_factor(u["id"])
+        return {"user": prof["login"],
+                **gate.check(u["id"], person=f'{prof["firstName"]} {prof["lastName"]}',
+                             handle=prof["login"])}
 
     if name == "find_user":
         q = a["q"].lower()

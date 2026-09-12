@@ -4,13 +4,41 @@ What the Slack bot does, with no Slack in it.
 Kept separate from the Slack plumbing so every path can be exercised offline:
 parse the manager's message, decide what they want, do it, return the reply.
 """
-import re, json, pathlib
+import re, json, pathlib, urllib.error
 from agent import okta, packet as pk, brief, execute, llm, trace
 from agent.scanner import TEAM_PATHS
 from agent.config import CFG
 
 TEAMS = list(TEAM_PATHS)
 INTENTS = {"onboard", "drift", "mfa_audit", "help"}
+
+
+def explain_failure(e):
+    """
+    Turn an exception into something a manager can act on.
+
+    Every unhandled error used to reach the channel as
+    `Something failed: HTTPError: HTTP Error 404: Not Found`, which is the same
+    string whether the directory is down, the person was never provisioned, or
+    the demo was reseeded under a running bot. Those have three different
+    remedies, so they get three different messages.
+    """
+    if isinstance(e, urllib.error.HTTPError) and e.code == 404:
+        return ("The directory answered, and it has no record of that person or group. "
+                "This is not an outage. If the demo was reseeded while I was running, "
+                "the ids I was holding are stale — ask me again by name and I will look "
+                "them up fresh.")
+    if isinstance(e, urllib.error.URLError):
+        return (f"I could not reach the identity provider at {okta.BASE} ({e.reason}). "
+                f"Nothing was checked and nothing was changed. Someone needs to start it "
+                f"with `./run.sh` on the box.")
+    if isinstance(e, LookupError):
+        return str(e)
+    if isinstance(e, FileNotFoundError):
+        return (f"I could not find `{e.filename}`. If that is a packet, it was cleared "
+                f"since the message was posted — re-run the onboard and approve the new one.")
+    return (f"I failed with `{type(e).__name__}: {e}`. Nothing was granted. "
+            f"The agent's own log on the box has the traceback.")
 
 def _team_in(text):
     t = text.lower().replace("app store", "app-store")

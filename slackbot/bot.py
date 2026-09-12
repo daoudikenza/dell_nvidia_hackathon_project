@@ -92,7 +92,7 @@ def on_mention(event, client, say):
         try:
             r = core.handle(text, names)
         except Exception as e:
-            r = {"text": f"Something failed: `{type(e).__name__}: {e}`"}
+            r = {"text": core.explain_failure(e)}
         client.chat_postMessage(channel=event["channel"], thread_ts=thread,
                                 text=r["text"][:3000], blocks=sections(r["text"]) + buttons(r))
     threading.Thread(target=work, daemon=True).start()
@@ -111,12 +111,19 @@ def on_approve(ack, body, client):
 @app.action("recheck_mfa")
 def on_recheck(ack, body, client):
     ack()
-    from agent import okta
-    uid, _ = body["actions"][0]["value"].split("|", 1)
-    u = okta.resolve(uid)
-    r = core.onboard(u["profile"]["login"], u["profile"].get("department"))
     msg = body["message"]
-    client.chat_postMessage(channel=body["channel"]["id"], thread_ts=msg.get("thread_ts") or msg["ts"],
+    thread = msg.get("thread_ts") or msg["ts"]
+    # This handler had no error path at all, so a button carrying an id the
+    # directory no longer knows -- the ordinary result of a reseed -- did
+    # nothing at all, silently. Silence reads as "the bot is down".
+    try:
+        from agent import okta
+        uid, _ = body["actions"][0]["value"].split("|", 1)
+        u = okta.resolve(uid)
+        r = core.onboard(u["profile"]["login"], u["profile"].get("department"))
+    except Exception as e:
+        r = {"text": core.explain_failure(e)}
+    client.chat_postMessage(channel=body["channel"]["id"], thread_ts=thread,
                             text=r["text"][:3000], blocks=sections(r["text"]) + buttons(r))
 
 @app.event("message")

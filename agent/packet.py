@@ -62,9 +62,12 @@ def build(user_id, team, use_llm=True):
                                 "uses it" if sens.get(g,0) < 2 else
                                 "production-level access with no code path requiring it")}
                    for g in sorted(set(base["grants"]) - proposed)]
-    g           = gate.check(user_id)
+    g           = gate.check(user_id,
+                             person=f'{prof["firstName"]} {prof["lastName"]}',
+                             handle=prof["login"])
     trace.log("gate", "PASS — Okta Verify enrolled" if g["passed"]
-                      else "BLOCK — no Okta Verify", ", ".join(g["factors"]))
+                      else f'BLOCK — {g["status"]}',
+              ", ".join(g["factors"]) or g["statement"] or "")
     for d in declined:
         trace.log("pkt", f"-    {d['group']}", d["because"][:60])
     own         = owners(repo, paths[0]) if paths else []

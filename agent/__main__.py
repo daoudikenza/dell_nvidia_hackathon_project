@@ -100,7 +100,8 @@ def main(argv):
         print(f'\n  packet written: {out}')
         print(f'  {n} proposed · {len(p["declined"])} declined · '
               f'gate {"PASS" if p["gate"]["passed"] else "BLOCK"}')
-        if not p["gate"]["passed"]: print(f'  {p["gate"]["reason"]}')
+        if not p["gate"]["passed"]:
+            print(f'  {p["gate"]["status"]}: {p["gate"]["reason"]}')
         return 0
 
     if cmd == "stage":
@@ -120,12 +121,17 @@ def main(argv):
     if cmd == "enroll":
         from . import okta, gate
         u = okta.resolve(rest[0])
+        prof = u["profile"]
         okta.enroll_factor(u["id"])
-        g = gate.check(u["id"])
-        print(f'  {u["profile"]["firstName"]} {u["profile"]["lastName"]} — '
-              f'Okta Verify {"ENROLLED" if g["passed"] else "still missing"} '
-              f'({", ".join(g["factors"]) or "none"})')
-        return 0
+        g = gate.check(u["id"], person=f'{prof["firstName"]} {prof["lastName"]}',
+                       handle=prof["login"])
+        if g["passed"]:
+            print(f'  {prof["firstName"]} {prof["lastName"]} — Okta Verify ENROLLED '
+                  f'({", ".join(g["factors"])})')
+            return 0
+        print(f'  {prof["firstName"]} {prof["lastName"]} — still blocked')
+        print(f'  {g["reason"]}')
+        return 1
 
     if cmd == "brief":
         from . import packet, brief

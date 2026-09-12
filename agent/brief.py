@@ -8,18 +8,24 @@ needs their decision, and a link. This renders that.
 
 def render(p, packet_path=None):
     prof = p["user"]["profile"]
+    who = f'{prof["firstName"]} {prof["lastName"]}'
+    g = p["gate"]
+    blocked = not g["passed"]
     n_grant = len(p["derived"]) + len(p["conventional"])
     L = []
-    L.append(f'*{prof["firstName"]} {prof["lastName"]}* — {p["team"]} team, '
-             f'starts {prof.get("startDate","soon")}')
-    L.append("")
-    if not p["gate"]["passed"]:
-        L.append(f'⛔ *Blocked* — {p["gate"]["reason"]}')
+    # The block goes first. A reader who stops after one line still learns who
+    # is blocked and what to do about it; buried under the header, it read as
+    # decoration and people clicked Approve anyway.
+    if blocked:
+        L.append(f'⛔ *{who} is blocked* — {g["reason"]}')
         L.append("")
+    L.append(f'*{who}* — {p["team"]} team, starts {prof.get("startDate","soon")}')
+    L.append("")
     L.append(f'Today you would clone a teammate: *{len(p["baseline"]["grants"])} grants, '
              f'none justified*. I propose *{n_grant}*, each with a reason.')
     L.append("")
-    L.append("*Access I can grant once you approve*")
+    L.append("*Access held until the gate passes*" if blocked
+             else "*Access I can grant once you approve*")
     for d in p["derived"]:
         L.append(f'  • `{d["group"]}` — {d["because"]}')
     for c in p["conventional"]:
@@ -44,5 +50,9 @@ def render(p, packet_path=None):
     if packet_path:
         L.append("")
         L.append(f'Full packet with citations: `{packet_path}`')
-    L.append("Reply *approve* and I will provision the access.")
+    # Never invite an approval that the gate will refuse. The old text said
+    # "reply approve and I will provision the access" directly under a block.
+    L.append(f'Nothing is granted while {who} is blocked. Re-check once the '
+             f'enrollment lands.' if blocked
+             else "Reply *approve* and I will provision the access.")
     return "\n".join(L)
