@@ -102,7 +102,7 @@ This is checked rather than asserted:
 prints the model id read back from the inference endpoint's own `/models`
 response, `nvidia-smi`, and every established outbound connection held by the
 agent's processes, classified as loopback, allowed transport, or a finding. The
-same output is available in the channel as `@Least are you running locally?`.
+same output is available in the channel as `@Least status`.
 
 Why it has to be local: the two inputs are a private codebase and a corporate
 identity directory. Both are exactly the material a company will not send to a
@@ -201,9 +201,10 @@ The three groups that matter:
 
 A case that cannot run reports SKIP and why. It never reports PASS.
 
-Separately, `pytest` runs 28 unit tests. The 24 covering the MFA gate taxonomy
-and the approval control run with the directory stopped, which we verified by
-stopping it.
+Separately, `pytest` runs 37 unit tests, every one of which runs with the
+directory stopped. We verified that by stopping it. They cover the MFA gate's
+failure taxonomy, the approval control, frontmatter injection into the approval
+decision, and seed reproducibility across processes.
 
 ## What is real and what is not
 

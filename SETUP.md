@@ -165,7 +165,7 @@ Honest list, so nothing surprises you:
   over stdio, but has not been registered with mcporter inside a sandbox
 
 Checked since this list was written, so no longer untested: the MFA gate and the
-approval refusals (28 pytest cases, 24 of which run with the directory stopped),
+approval refusals (37 pytest cases, all of which run with the directory stopped),
 citation resolution against the real cal.com checkout for all five teams, and
 Slack-to-terminal parity. `.venv/bin/python evals/run.py` is the table.
 

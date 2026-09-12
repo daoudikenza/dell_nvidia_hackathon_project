@@ -129,7 +129,9 @@ def _scalar(v):
     spaces; nothing is dropped, so a mangled name is visible rather than silently
     truncated.
     """
-    return " ".join(str("-" if v is None else v).split())
+    # "---" is the frontmatter delimiter; inside a value it truncates the block
+    # the approval decision is read from, so it cannot survive either.
+    return " ".join(str("-" if v is None else v).replace("---", "—").split())
 
 
 def render(p):

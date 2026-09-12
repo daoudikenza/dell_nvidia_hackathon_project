@@ -15,9 +15,27 @@ import pathlib
 import subprocess
 import sys
 
+import pytest
+
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 SEED = ROOT / "services" / "mock_okta" / "seed.py"
 ORG = ROOT / "services" / "mock_okta" / "org.json"
+
+
+@pytest.fixture(autouse=True)
+def preserve_org():
+    """
+    seed.py writes the repo's real org.json, and these tests run it ten times.
+    Running pytest during a demo would therefore wipe live state: enrollments
+    made with `agent enroll`, grants applied through `approve`. Snapshot and
+    restore around every test in this file.
+    """
+    saved = ORG.read_bytes() if ORG.exists() else None
+    try:
+        yield
+    finally:
+        if saved is not None:
+            ORG.write_bytes(saved)
 
 
 def _reseed_in_a_fresh_process():

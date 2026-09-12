@@ -176,6 +176,15 @@ def main(argv):
             print(f'\n  REFUSED ({r.code})')
             print(f'  {r.message}\n')
             return 1
+        except LookupError as e:
+            # The ordinary result of a reseed between generating a packet and
+            # approving it. Slack and MCP both explain this; the CLI used to
+            # print a traceback.
+            print(f'\n  REFUSED (no_such_subject)')
+            print(f'  {e}')
+            print(f'  The packet names someone the directory does not have. If the demo '
+                  f'was reseeded since it was written, re-run the onboard.\n')
+            return 1
         print(f'  subject  : {res["name"]} <{res["subject"]}>')
         print(f'  approver : {res["approver_email"]}')
         print(f'  applied  : {", ".join(res["applied"]) or "-"}  '

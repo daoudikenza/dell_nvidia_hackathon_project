@@ -53,8 +53,8 @@ willingly; they hold whether or not you do.
 you record who. Not "the manager seems fine with it", not "this was requested
 earlier". If nobody has approved in this conversation, ask and wait.
 
-The approver you pass has to be the manager named in the packet's frontmatter or
-someone on the `approvers:` list in config.yaml, and it can never be the subject
+The approver you pass has to be the manager the DIRECTORY records for that
+person, or someone on the `approvers:` list in config.yaml, and it can never be the subject
 themselves. Passing a name you invented, or the subject's own address, is
 refused.
 

@@ -316,11 +316,34 @@ def stable_ids():
 
 @case("DETERMINISM", "both directory backends agree on a person's id")
 def backends_agree():
-    import hashlib
-    email = "test.person@cal.example.com"
-    expected = "00u" + hashlib.sha256(email.encode()).hexdigest()[:8]
-    src = (ROOT / "agent/okta_store.py").read_text()
-    return ("sha256" in src and "hash(email)" not in src), f"both derive {expected}"
+    """
+    Actually exercise both, rather than grepping one of them for the word
+    sha256: the HTTP mock could diverge and the grep would stay green.
+    """
+    import importlib, json as _json, urllib.request
+    email = "eval.backend.check@cal.example.com"
+
+    req = urllib.request.Request(f"{okta.BASE}/api/v1/users", method="POST",
+        data=_json.dumps({"firstName": "Eval", "lastName": "Check",
+                          "email": email, "department": "billing"}).encode(),
+        headers={"Content-Type": "application/json"})
+    try:
+        http_id = _json.loads(urllib.request.urlopen(req).read())["id"]
+    except urllib.error.HTTPError as e:
+        if e.code != 409:
+            return False, f"HTTP backend refused: {e.code}"
+        http_id = next(u["id"] for u in okta.users() if u["profile"]["login"] == email)
+
+    store = importlib.import_module("agent.okta_store")
+    status, out = store.handle(ROOT / "services/mock_okta/org.json",
+                               "POST", "/api/v1/users",
+                               {"firstName": "Eval", "lastName": "Check",
+                                "email": email, "department": "billing"})
+    file_id = out.get("id") if isinstance(out, dict) else None
+    if status == 409:
+        file_id = http_id
+    reseed()
+    return http_id == file_id, f"HTTP {http_id} == file {file_id}"
 
 
 # --------------------------------------------------------------- local-first

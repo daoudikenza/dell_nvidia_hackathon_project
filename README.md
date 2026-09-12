@@ -94,7 +94,8 @@ onboarding_brief, find_gaps, access_drift, apply_access, enroll_mfa, find_user.
 The ordering lives in `mcp/AGENT.md`. The refusals do not: `apply_access` routes
 through `agent/execute.py` `approve()`, which re-reads the packet, re-runs the
 MFA gate against the directory, refuses self-approval, and refuses an approver
-the packet does not name. A model that ignores its prompt and calls
+the directory does not record as that person's manager. A model that ignores
+its prompt and calls
 `apply_access` directly gets refused by the same code that refuses a human.
 
 ## Showing the work

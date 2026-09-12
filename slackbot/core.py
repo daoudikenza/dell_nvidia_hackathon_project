@@ -23,16 +23,29 @@ def explain_failure(e):
     the demo was reseeded under a running bot. Those have three different
     remedies, so they get three different messages.
     """
-    if isinstance(e, urllib.error.HTTPError) and e.code == 404:
-        return ("The directory answered, and it has no record of that person or group. "
-                "This is not an outage. If the demo was reseeded while I was running, "
-                "the ids I was holding are stale — ask me again by name and I will look "
-                "them up fresh.")
+    # HTTPError subclasses URLError, so it has to be handled first and in full.
+    # Falling through to the URLError branch for a 409 or a 500 would report
+    # "I could not reach the directory" about a directory that answered -- the
+    # exact misdiagnosis agent/gate.py exists to prevent, one layer up.
+    if isinstance(e, urllib.error.HTTPError):
+        if e.code == 404:
+            return ("The directory answered, and it has no record of that person or "
+                    "group. This is not an outage. If the demo was reseeded while I was "
+                    "running, the ids I was holding are stale — ask me again by name and "
+                    "I will look them up fresh.")
+        if e.code == 409:
+            return ("The directory says that already exists. Nothing was changed.")
+        return (f"The directory answered with HTTP {e.code} and refused the request. "
+                f"It is running; something about the request was wrong. Nothing was "
+                f"changed.")
     if isinstance(e, urllib.error.URLError):
         return (f"I could not reach the identity provider at {okta.BASE} ({e.reason}). "
                 f"Nothing was checked and nothing was changed. Someone needs to start it "
                 f"with `./run.sh` on the box.")
-    if isinstance(e, LookupError):
+    # Only the resolver's LookupError is a message for a human. KeyError and
+    # IndexError are also LookupErrors, and posting a bare `'ts'` into the
+    # channel as the whole reply is not an explanation of anything.
+    if isinstance(e, LookupError) and not isinstance(e, (KeyError, IndexError)):
         return str(e)
     if isinstance(e, FileNotFoundError):
         return (f"I could not find `{e.filename}`. If that is a packet, it was cleared "
@@ -135,8 +148,9 @@ def approve(packet_rel, approver):
     # claim a judge checks, and it would be the only false line in the demo.
     pr = execute.open_pr(res["path"], res["subject"], res["applied"], dry_run=True)
     lines.append(f"Access request *drafted* for branch `{pr['branch']}` — not filed. "
-                 f"Run `python3 -m agent approve {pathlib.Path(packet_rel).name} "
-                 f"{res['approver_email']} --live` on the box to file it.")
+                 f"Run `python3 -m agent approve {res['path'].parent.name}/"
+                 f"{res['path'].name} {res['approver_email']} --live` on the box to "
+                 f"file it.")
     return {"text": "\n".join(lines)}
 
 def drift():

@@ -35,6 +35,30 @@ def _norm(email):
     return (email or "").strip().lower()
 
 
+def _head(md):
+    """
+    The frontmatter block, or a refusal.
+
+    Splitting on "---" assumes no value contains the delimiter. _scalar collapses
+    newlines but leaves "---" intact, so a profile field carrying it truncates
+    the block: `manager:` drops out of view, the packet-versus-directory check is
+    skipped, and the group lists come back empty, so approve() would report
+    success having granted nothing. This parser decides who may grant access. It
+    fails closed.
+    """
+    parts = md.split("---")
+    if len(parts) < 3:
+        raise Refused("malformed_packet",
+                      "This packet has no readable frontmatter block, so I cannot tell "
+                      "who it is about or what it proposes. Re-run the onboard.")
+    if any("---" in l for l in parts[1].splitlines()):
+        raise Refused("malformed_packet",
+                      "This packet's frontmatter contains the `---` delimiter inside a "
+                      "value, so I cannot parse it unambiguously. I will not guess at an "
+                      "access decision. Re-run the onboard.")
+    return parts[1]
+
+
 def _field(md, key):
     """
     Read one scalar out of the packet frontmatter.
@@ -45,7 +69,7 @@ def _field(md, key):
     the real one. packet.render can no longer emit such a line; this refuses to
     guess if anything else ever does.
     """
-    head = md.split("---")[1] if md.count("---") >= 2 else ""
+    head = _head(md)
     hits = [l.split(":", 1)[1].strip() for l in head.splitlines()
             if l.startswith(f"{key}:")]
     if len(hits) > 1:
@@ -163,7 +187,7 @@ def approve(packet, approver, approvers=None):
 
 def parse_frontmatter_groups(md):
     """Pull proposed groups out of the packet's frontmatter."""
-    head = md.split("---")[1] if md.count("---") >= 2 else ""
+    head = _head(md)
     out, section = {"derived": [], "conventional": [], "declined": []}, None
     for line in head.splitlines():
         s = line.strip()

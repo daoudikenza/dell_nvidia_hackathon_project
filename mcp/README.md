@@ -45,8 +45,8 @@ Those descriptions are guidance, and guidance is not a control. The control is
 button, `python3 -m agent approve`, and the `apply_access` tool. Before anything
 reaches the directory it re-reads the packet from disk, re-runs the MFA gate
 against the live directory rather than trusting the packet's own status line,
-refuses a subject approving their own access, refuses an approver the packet
-does not name, and refuses a packet path that resolves outside `packets/`.
+refuses a subject approving their own access, refuses an approver the directory
+does not record as that person's manager, and refuses a packet path that resolves outside `packets/`.
 
 So an agent that never reads a single instruction still cannot route around it,
 and neither can a human who clicks the wrong button.
@@ -54,4 +54,5 @@ and neither can a human who clicks the wrong button.
 Worth saying out loud in Q&A: prompt rules are guidance, the code check is the
 control. `tests/test_approval.py` is the demonstration -- seventeen cases, each
 asserting that nothing reached the directory, not merely that a refusal was
-printed.
+printed -- and `tests/test_frontmatter_injection.py` covers a forged approver,
+which a security review found and which is fixed.

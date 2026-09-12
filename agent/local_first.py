@@ -32,7 +32,57 @@ ALLOWED = {"slack.com": "Slack — message transport only, never inference",
            "slack-msgs.com": "Slack — message transport only, never inference",
            "slack-edge.com": "Slack — static assets"}
 
+#: Slack's own hostnames, forward-resolved at report time to the addresses the
+#: bot actually connects to. Reverse DNS cannot do this job: Slack fronts on AWS,
+#: so a remote address reverse-resolves to ec2-….amazonaws.com, and allowing
+#: "amazonaws.com" would wave through every unrelated AWS connection on the box
+#: and call it Slack. Forward resolution names only Slack.
+SLACK_HOSTS = ("slack.com", "api.slack.com", "wss-primary.slack.com",
+               "wss-backup.slack.com", "slack-msgs.com")
+
 LOOPBACK = {"127.0.0.1", "::1", "localhost", "0.0.0.0", "[::1]"}
+
+_RDNS = {}
+_SLACK_IPS = None
+
+
+def slack_addresses():
+    """Every address Slack's own hostnames currently resolve to."""
+    global _SLACK_IPS
+    if _SLACK_IPS is None:
+        ips = set()
+        for host in SLACK_HOSTS:
+            try:
+                for info in socket.getaddrinfo(host, 443, proto=socket.IPPROTO_TCP):
+                    ips.add(info[4][0])
+            except Exception:
+                continue
+        _SLACK_IPS = ips
+    return _SLACK_IPS
+
+
+def _name_of(ip):
+    """
+    Reverse-resolve a remote address, cached, with a short timeout.
+
+    `lsof -n` deliberately does not resolve names -- it is what keeps the call
+    fast and non-blocking -- so every remote here arrives as a bare address and
+    a hostname allowlist applied to it can never match. Resolving here instead
+    keeps that property and makes the classification real. An address that does
+    not resolve stays unresolved and is reported as such rather than being
+    quietly counted either way.
+    """
+    if ip in _RDNS:
+        return _RDNS[ip]
+    old = socket.getdefaulttimeout()
+    try:
+        socket.setdefaulttimeout(1.5)
+        _RDNS[ip] = socket.gethostbyaddr(ip)[0]
+    except Exception:
+        _RDNS[ip] = None
+    finally:
+        socket.setdefaulttimeout(old)
+    return _RDNS[ip]
 
 
 def _run(cmd, timeout=10):
@@ -105,9 +155,28 @@ def egress(scope="agent"):
         cmd += ["-a", "-c", "python", "-c", "python3", "-c", "Python"]
     rc, out = _run(cmd, timeout=20)
     if rc == 127:
-        return {"checked": False, "note": "lsof not installed; cannot enumerate connections"}
+        return {"checked": False, "note": "lsof is not installed; connections were not enumerated"}
+    # lsof's exit code is not a usable signal here: it exits 1 when any one of
+    # the -c selectors matched no process, which is the normal case (there is no
+    # process literally named "Python" on Linux) even though the output is
+    # perfectly good. So key on the output instead, and only refuse to report
+    # when there is nothing to read. Returning an empty findings list after a
+    # command that did not run would print "nothing leaves this box" on no
+    # evidence, which is exactly the failure this module exists to avoid.
+    if rc == 124:
+        return {"checked": False,
+                "note": "lsof timed out; connections were NOT enumerated, so this "
+                        "says nothing either way. Check it by hand."}
+    if not out.startswith("COMMAND"):
+        if out.strip():
+            return {"checked": False,
+                    "note": f"lsof produced no connection table (exit {rc}): "
+                            f"{out.strip().splitlines()[0][:120]}"}
+        return {"checked": False,
+                "note": f"lsof produced no output (exit {rc}); connections were NOT "
+                        f"enumerated. Check it by hand."}
 
-    loopback, allowed, findings = [], [], []
+    loopback, allowed, unresolved, findings = [], [], [], []
     for line in out.splitlines():
         if "ESTABLISHED" not in line:
             continue
@@ -118,17 +187,22 @@ def egress(scope="agent"):
         proc = parts[0]
         remote = conn.split("->", 1)[1]
         rhost = remote.rsplit(":", 1)[0].strip("[]")
-        entry = f"{proc:<16} -> {remote}"
-        if rhost in LOOPBACK:
-            loopback.append(entry)
+        if rhost in LOOPBACK or rhost.startswith("fe80:"):
+            loopback.append(f"{proc:<16} -> {remote}")
             continue
-        why = next((v for k, v in ALLOWED.items() if k in rhost.lower()), None)
+        name = _name_of(rhost)
+        entry = f"{proc:<16} -> {remote}" + (f"  [{name}]" if name else "")
+        why = next((v for k, v in ALLOWED.items() if k in (name or "").lower()), None)
+        if why is None and rhost in slack_addresses():
+            why = "Slack — message transport only, never inference"
         if why:
             allowed.append(f"{entry}   ({why})")
+        elif name is None:
+            unresolved.append(entry)
         else:
             findings.append(entry)
     return {"checked": True, "scope": scope, "loopback": loopback,
-            "allowed": allowed, "findings": findings}
+            "allowed": allowed, "unresolved": unresolved, "findings": findings}
 
 
 def report():
@@ -174,6 +248,12 @@ def report():
         L.append(f"   allowed transport : {len(e['allowed'])}")
         for x in e["allowed"][:8]:
             L.append(f"      {x}")
+        if e["unresolved"]:
+            L.append(f"   unresolved        : {len(e['unresolved'])}")
+            for x in e["unresolved"]:
+                L.append(f"      {x}")
+            L.append("   -> these did not reverse-resolve, so they are listed rather "
+                     "than classified. Neither counted as clean nor as a violation.")
         if e["findings"]:
             L.append(f"   UNEXPECTED        : {len(e['findings'])}")
             for x in e["findings"]:
