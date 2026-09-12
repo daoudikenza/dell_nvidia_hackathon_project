@@ -66,3 +66,28 @@ Re-run `python3 services/mock_okta/seed.py` to reset between rehearsals.
 `00uNEWHIRE01` — Nadia Rahimi, billing, starts Mon 14 Sep, STAGED, no groups,
 no MFA enrolled (so the gate fires). Her manager is Sarah Chen, the same senior
 engineer the baseline clones from.
+
+## Wiring into OpenClaw (the part that makes it an agent)
+
+OpenClaw connects Slack to the model. MCP connects the model to *our code*.
+Without this the agent cannot call anything and Least is just a CLI.
+
+    # register the tool server with the sandbox
+    mcporter add least -- python3 /path/to/dell_nvidia_hackathon_project/mcp/server.py
+
+    # load the behaviour
+    #   mcp/AGENT.md  ->  OpenClaw agent system prompt
+
+Verify the server independently of OpenClaw:
+
+    printf '%s\n' \
+      '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}' \
+      '{"jsonrpc":"2.0","id":2,"method":"tools/list","params":{}}' \
+      | python3 mcp/server.py
+
+Nine tools: current_practice, scan_repo, peer_usage, check_mfa, build_packet,
+find_gaps, access_drift, apply_access, find_user.
+
+The ordering and the refusals live in `mcp/AGENT.md`, not in code — the MFA gate
+is enforced in `agent/gate.py` too, so an agent that ignores its prompt still
+cannot route around it.
