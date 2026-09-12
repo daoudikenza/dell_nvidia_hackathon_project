@@ -52,6 +52,42 @@ def analyse(org, unused_days=90):
     findings.sort(key=lambda f: (-f["sensitivity"], -f["idle_days"]))
     return findings
 
+def unprotected(org):
+    """
+    People holding elevated or production access with NO MFA enrolled.
+
+    The gate on a new hire is a tautology - of course she has no MFA yet. This
+    is the finding that isn't obvious: someone who already has production
+    database write, has had it for two years, and has never enrolled a second
+    factor. One phished password and that account is the blast radius.
+
+    No company has this list. It is invisible unless you join the group graph
+    against factor enrollment, which is exactly what nobody does by hand.
+    """
+    gname = {g["id"]: g["profile"]["name"] for g in org["groups"]}
+    gsens = {g["id"]: g.get("_sensitivity", 0) for g in org["groups"]}
+    held  = defaultdict(list)
+    for m in org["memberships"]:
+        held[m["userId"]].append(m["groupId"])
+
+    out = []
+    for u in org["users"]:
+        if any(f.get("status") == "ACTIVE" for f in u.get("_factors", [])):
+            continue                                   # enrolled, fine
+        risky = sorted({gname[g] for g in held.get(u["id"], []) if gsens.get(g, 0) >= 1},
+                       key=lambda n: -max(gsens[i] for i in gsens if gname[i] == n))
+        if not risky: continue
+        worst = max((gsens[i] for i in held.get(u["id"], []) if i in gsens), default=0)
+        out.append({
+            "user": u["profile"]["login"],
+            "name": f'{u["profile"]["firstName"]} {u["profile"]["lastName"]}',
+            "team": u["profile"].get("department"),
+            "service_account": u["profile"].get("title") == "Service Account",
+            "groups": risky, "worst": worst,
+            "tenure_days": (NOW - parse(u["created"])).days,
+        })
+    return sorted(out, key=lambda x: (-x["worst"], -x["tenure_days"]))
+
 def coverage(org):
     """What fraction of granted privilege is actually exercised?"""
     total = len(org["memberships"])
@@ -76,6 +112,18 @@ if __name__ == "__main__":
             tag = "NEVER USED" if f["never_used"] else f'idle {f["idle_days"]}d'
             svc = "  [service account]" if f["service_account"] else ""
             print(f"    {f['group']:<22} {f['name']:<20} {f['team']:<11} {tag}{svc}")
+        print()
+
+    np_ = unprotected(org)
+    if np_:
+        print(f"  NO MFA + ELEVATED ACCESS  ({len(np_)})")
+        print(f"  {'-'*68}")
+        for f in np_:
+            svc = "  [service account]" if f["service_account"] else ""
+            tag = "PRODUCTION" if f["worst"] == 2 else "elevated"
+            print(f"    {f['name']:<20} {f['team']:<11} {tag:<11} "
+                  f"{', '.join(f['groups'][:3])}{svc}")
+            print(f"    {'':<20} {f['tenure_days']}d at the company, never enrolled a second factor")
         print()
 
     routine = [f for f in fs if f["sensitivity"] == 0]
