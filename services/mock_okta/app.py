@@ -83,6 +83,40 @@ def enroll_factor(uid: str, factorType: str = "push"):
         save(d)
     return u["_factors"]
 
+class NewHire(BaseModel):
+    firstName: str
+    lastName: str
+    email: str | None = None
+    department: str = "billing"
+    startDate: str | None = None
+    manager: str | None = None
+
+@app.post("/api/v1/users", status_code=201)
+def create_user(h: NewHire):
+    """
+    HR provisions an identity. This is the upstream event Least reacts to --
+    a person exists in the directory with no groups and no MFA, and the agent
+    has to notice and prepare for them without anyone asking.
+    """
+    d = load()
+    email = h.email or f"{h.firstName.lower()}.{h.lastName.lower()}@cal.example.com"
+    uid = "00u" + str(abs(hash(email)) % 10**8).zfill(8)
+    if any(u["id"] == uid for u in d["users"]): raise HTTPException(409, "already exists")
+    u = {"id": uid, "status": "STAGED", "created": now(),
+         "profile": {"firstName": h.firstName, "lastName": h.lastName,
+                     "email": email, "login": email, "title": "Software Engineer",
+                     "department": h.department,
+                     "startDate": h.startDate or "2026-09-15",
+                     "manager": h.manager or "sarah.chen@cal.example.com"},
+         "_factors": []}
+    d["users"].append(u)
+    d["logs"].append({"uuid": f"ev{len(d['logs']):09d}", "published": now(),
+                      "eventType": "user.lifecycle.create",
+                      "actor": {"id": "hr-system", "type": "Application"},
+                      "target": [{"id": uid, "type": "User"}]})
+    save(d)
+    return pub(u)
+
 # ---------- groups ----------
 @app.get("/api/v1/groups")
 def list_groups(): return load()["groups"]

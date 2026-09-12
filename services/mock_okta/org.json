@@ -812,6 +812,22 @@
           "created": "2026-09-12T17:37:21.000Z"
         }
       ]
+    },
+    {
+      "id": "00u82824493",
+      "status": "STAGED",
+      "created": "2026-09-12T17:42:49.000Z",
+      "profile": {
+        "firstName": "Marcus",
+        "lastName": "Webb",
+        "email": "marcus.webb@cal.example.com",
+        "login": "marcus.webb@cal.example.com",
+        "title": "Software Engineer",
+        "department": "billing",
+        "startDate": "2026-09-15",
+        "manager": "sarah.chen@cal.example.com"
+      },
+      "_factors": []
     }
   ],
   "groups": [
@@ -52000,6 +52016,21 @@
       "target": [
         {
           "id": "00uNEWHIRE01",
+          "type": "User"
+        }
+      ]
+    },
+    {
+      "uuid": "ev000003298",
+      "published": "2026-09-12T17:42:49.000Z",
+      "eventType": "user.lifecycle.create",
+      "actor": {
+        "id": "hr-system",
+        "type": "Application"
+      },
+      "target": [
+        {
+          "id": "00u82824493",
           "type": "User"
         }
       ]

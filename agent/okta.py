@@ -45,6 +45,14 @@ def user_groups(uid):        return _get(f"/api/v1/users/{uid}/groups")
 def factors(uid):            return _get(f"/api/v1/users/{uid}/factors")
 def group_users(gid):        return _get(f"/api/v1/groups/{gid}/users")
 def logs(since=None):        return _get(f"/api/v1/logs" + (f"?since={since}" if since else ""))
+def create_user(first, last, team="billing", start=None, manager=None):
+    req = urllib.request.Request(f"{BASE}/api/v1/users", method="POST",
+        data=json.dumps({"firstName": first, "lastName": last, "department": team,
+                         "startDate": start, "manager": manager}).encode(),
+        headers={"Content-Type": "application/json"})
+    with _OPENER.open(req, timeout=30) as r:
+        return json.loads(r.read())
+
 def enroll_factor(uid, factor="push"):
     return _send(f"/api/v1/users/{uid}/factors?factorType={factor}", "POST")
 

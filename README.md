@@ -109,3 +109,22 @@ pipes cleanly:
 For the demo, run this in a second pane beside Slack. A result that appears
 instantly with nothing in between looks hardcoded; the trace is what shows it
 is not.
+
+## Proving "acts on its own over time"
+
+Start the loop and leave it running:
+
+    python3 loop/daemon.py 30        # 30s ticks for a live demo
+
+Then, on stage, change the world without touching the agent:
+
+    python3 -m agent stage Marcus Webb billing
+
+That writes a STAGED user into Okta, exactly as an HR system would. Nobody
+tells the agent. On its next tick it notices, builds his packet, applies the
+MFA gate, and journals what it did:
+
+    PREPARE  Marcus Webb starts 2026-09-15 on billing — packet ready
+             (5 proposed, 4 declined, gate BLOCK) marcus-webb.md
+
+`python3 -m agent journal` prints everything it did while nobody was watching.

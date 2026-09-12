@@ -7,6 +7,7 @@ Least CLI.  python -m agent <command>
   peers     <team>            groups the team actually uses
   onboard   <who> <team>      build the packet (name, email or id)
   enroll    <who>             simulate the person completing Okta Verify setup
+  stage     <first> <last> [team]   simulate HR provisioning a new hire
   crosscheck <packet.md>      docs-vs-access gaps
   approve   <packet.md> <approver-email> [--live]
   drift                       the always-on scan
@@ -99,6 +100,20 @@ def main(argv):
         print(f'  {n} proposed · {len(p["declined"])} declined · '
               f'gate {"PASS" if p["gate"]["passed"] else "BLOCK"}')
         if not p["gate"]["passed"]: print(f'  {p["gate"]["reason"]}')
+        return 0
+
+    if cmd == "stage":
+        # Simulates HR provisioning someone. The agent is NOT told -- the loop
+        # has to notice on its next tick. This is the live proof of autonomy.
+        from . import okta
+        first, last = rest[0], rest[1]
+        team = rest[2] if len(rest) > 2 else "billing"
+        u = okta.create_user(first, last, team)
+        print(f'\n  HR provisioned {u["profile"]["firstName"]} {u["profile"]["lastName"]}'
+              f'  <{u["profile"]["login"]}>')
+        print(f'  team {u["profile"]["department"]} · starts {u["profile"]["startDate"]}'
+              f' · status {u["status"]} · 0 groups · no MFA')
+        print(f'\n  Nobody has told the agent. Watch the loop.\n')
         return 0
 
     if cmd == "enroll":
