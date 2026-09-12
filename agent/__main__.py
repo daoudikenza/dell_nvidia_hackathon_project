@@ -18,8 +18,29 @@ def main(argv):
 
     if cmd == "status":
         from . import llm, okta
-        name, kind, model = llm.which()
-        print(f"inference : {kind or 'NONE REACHABLE'}  {model or ''}  ({name or '-'})")
+        from .config import CFG
+        name, kind, model, errs = llm.which(verbose=True)
+        if kind:
+            print(f"inference : {kind}  {model}  ({name})")
+        else:
+            print("inference : NONE REACHABLE")
+            for n, k, base, m, err in errs:
+                print(f"            {n:<8} {k:<7} {base}")
+                print(f"                     model={m}")
+                print(f"                     {err}")
+            print()
+            print("  what those endpoints actually serve:")
+            for n in ("primary", "fallback"):
+                base = CFG["inference"][n]["base"]
+                url, body = llm.probe(base)
+                if url:
+                    ids = []
+                    if isinstance(body, dict):
+                        ids = [d.get("id") or d.get("name")
+                               for d in (body.get("data") or body.get("models") or [])]
+                    print(f"            {url} -> {', '.join(i for i in ids if i) or 'responded'}")
+                else:
+                    print(f"            {base} -> nothing responding")
         try:    print(f"okta      : ok — {len(okta.users())} users, {len(okta.groups())} groups")
         except Exception as e: print(f"okta      : UNREACHABLE — {e}")
         from .config import CFG

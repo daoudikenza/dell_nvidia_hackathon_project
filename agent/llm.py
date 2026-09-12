@@ -33,16 +33,35 @@ def _ollama(spec, system, prompt):
         "options": {"temperature": CFG["inference"]["temperature"]}})
     return out["message"]["content"]
 
-def which():
-    """Report the backend actually answering, for the demo's activity panel."""
+def which(verbose=False):
+    """
+    Report the backend actually answering.
+
+    On failure, say WHY per backend. "none reachable" with no reason sends you
+    hunting through three possible causes; the actual error usually names it.
+    """
+    errors = []
     for name in ("primary", "fallback"):
         spec = CFG["inference"][name]
         try:
             ask("ok", "reply with the single word: ready", _only=spec)
-            return name, spec["kind"], spec["model"]
+            return (name, spec["kind"], spec["model"], errors) if verbose \
+                   else (name, spec["kind"], spec["model"])
+        except Exception as e:
+            errors.append((name, spec["kind"], spec["base"], spec["model"],
+                           f"{type(e).__name__}: {e}"))
+    return (None, None, None, errors) if verbose else (None, None, None)
+
+def probe(base):
+    """What does this endpoint actually serve? Used to diagnose a wrong URL."""
+    for path in ("/models", "/v1/models", "/api/tags", "/health"):
+        url = base.rstrip("/").removesuffix("/v1") + path
+        try:
+            with urllib.request.urlopen(url, timeout=6) as r:
+                return url, json.loads(r.read())
         except Exception:
             continue
-    return None, None, None
+    return None, None
 
 def ask(system, prompt, _only=None):
     specs = [_only] if _only else [CFG["inference"]["primary"], CFG["inference"]["fallback"]]
