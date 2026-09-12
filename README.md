@@ -88,8 +88,8 @@ Verify the server independently of OpenClaw:
       '{"jsonrpc":"2.0","id":2,"method":"tools/list","params":{}}' \
       | python3 mcp/server.py
 
-Nine tools: current_practice, scan_repo, peer_usage, check_mfa, build_packet,
-find_gaps, access_drift, apply_access, find_user.
+Eleven tools: current_practice, scan_repo, peer_usage, check_mfa, build_packet,
+onboarding_brief, find_gaps, access_drift, apply_access, enroll_mfa, find_user.
 
 The ordering lives in `mcp/AGENT.md`. The refusals do not: `apply_access` routes
 through `agent/execute.py` `approve()`, which re-reads the packet, re-runs the
