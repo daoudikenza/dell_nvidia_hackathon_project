@@ -1,11 +1,11 @@
 # Least — runtime config. Everything here points at localhost on the GB10.
 repo: ~/hack-stage/demo-repos/cal.com
-okta: http://localhost:8081
+okta: http://localhost:8091
 vault: http://localhost:8200
 
 inference:
   # vLLM is primary (the 35B). Ollama is the fallback if vLLM isn't up yet.
-  primary:  {kind: vllm,   base: "http://localhost:8000/v1", model: "nvidia/Qwen3.6-35B-A3B-NVFP4"}
+  primary:  {kind: vllm, base: "http://localhost:8081/v1", model: "qwen7b", api_key: "local-hackathon-key"}
   fallback: {kind: ollama, base: "http://localhost:11434",   model: "llama3.2"}
   temperature: 0.2
   max_tokens: 1400

@@ -159,7 +159,7 @@ def call(name, a):
                  "email": u["profile"]["login"], "team": u["profile"].get("department"),
                  "status": u["status"]}
                 for u in okta.users()
-                if q in json.dumps(u["profile"]).lower()]
+                if all(t in json.dumps(u["profile"]).lower() for t in q.split())]
         return {"matches": hits[:8]}
 
     raise ValueError(f"unknown tool: {name}")

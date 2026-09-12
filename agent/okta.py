@@ -19,7 +19,7 @@ if BASE.startswith("file:"):
 # https_proxy set (common on managed and event networks), urllib will route
 # even localhost through it and the handshake fails as
 # [SSL: WRONG_VERSION_NUMBER]. An explicit empty ProxyHandler opts out.
-_OPENER = urllib.request.build_opener(urllib.request.ProxyHandler({}))
+_OPENER = urllib.request.build_opener()
 
 def _file(method, path, body=None):
     t = time.time()
