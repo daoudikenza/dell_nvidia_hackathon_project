@@ -3,3 +3,8 @@ __pycache__/
 .loop-state.json
 .venv/
 loop/.state.json
+
+# Generated packets. Regenerated on every `onboard`, so tracking the working
+# copy means a conflict on every pull. The audit-trail story is unaffected:
+# `approve` force-adds the specific packet a human signed off on.
+packets/*.md

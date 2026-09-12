@@ -40,8 +40,10 @@ def open_pr(packet_path, user_email, groups, dry_run=True):
             f"Proposed groups:\n" + "\n".join(f"- `{g}`" for g in groups) +
             f"\n\nFull justification with code citations: `{packet_path}`\n\n"
             f"Approving this PR provisions the access. Reverting it revokes.\n")
+    # -f because packets/*.md is gitignored: only the packet a human actually
+    # approved becomes part of the record, not every regeneration.
     cmds = [["git", "checkout", "-b", branch],
-            ["git", "add", str(packet_path)],
+            ["git", "add", "-f", str(packet_path)],
             ["git", "commit", "-m", f"Access request: {user_email}"],
             ["git", "push", "-u", "origin", branch],
             ["gh", "pr", "create", "--title", f"Access request: {user_email}",
