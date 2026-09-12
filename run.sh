@@ -23,10 +23,24 @@ if ! "$PY" -c "import yaml, fastapi" 2>/dev/null; then
   exit 1
 fi
 
-echo "== mock Okta :8081 =="
+# Port comes from config.yaml so there is ONE place to change it. If something
+# else on the box already owns it (another service, another team), edit the
+# okta: line in config.yaml and everything follows.
+OKTA_PORT=$("$PY" -c "import yaml;print(yaml.safe_load(open('config.yaml'))['okta'].rsplit(':',1)[1])")
+
+echo "== mock Okta :$OKTA_PORT =="
 pkill -f "uvicorn services.mock_okta" 2>/dev/null
+sleep 1
+if ss -ltn 2>/dev/null | grep -q ":$OKTA_PORT " || lsof -i ":$OKTA_PORT" >/dev/null 2>&1; then
+  echo "   PORT $OKTA_PORT IS ALREADY IN USE by something else."
+  echo "   Find it:  ss -ltnp | grep $OKTA_PORT"
+  echo "   Then either kill it, or edit config.yaml:"
+  echo "       okta: http://localhost:8091"
+  echo "   and re-run ./run.sh"
+  exit 1
+fi
 "$PY" services/mock_okta/seed.py
-("$PY" -m uvicorn services.mock_okta.app:app --port 8081 --log-level warning &)
+("$PY" -m uvicorn services.mock_okta.app:app --port "$OKTA_PORT" --log-level warning &)
 
 echo "== Vault dev :8200 =="
 if command -v vault >/dev/null; then
