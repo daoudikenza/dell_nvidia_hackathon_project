@@ -12,15 +12,21 @@ class Offline(Exception): pass
 # Local inference must never go through a host proxy -- see agent/okta.py.
 _OPENER = urllib.request.build_opener(urllib.request.ProxyHandler({}))
 
-def _post(url, payload, timeout=180):
+def _headers(spec):
+    """llama-server and vLLM can both be started with --api-key."""
+    h = {"Content-Type": "application/json"}
+    key = (spec or {}).get("api_key")
+    if key: h["Authorization"] = f"Bearer {key}"
+    return h
+
+def _post(url, payload=None, timeout=180, spec=None):
     req = urllib.request.Request(url, method="POST",
-        data=json.dumps(payload).encode(),
-        headers={"Content-Type": "application/json"})
+        data=json.dumps(payload).encode(), headers=_headers(spec))
     with _OPENER.open(req, timeout=timeout) as r:
         return json.loads(r.read())
 
 def _vllm(spec, system, prompt):
-    out = _post(f"{spec['base']}/chat/completions", {
+    out = _post(f"{spec['base']}/chat/completions", spec=spec, payload={
         "model": spec["model"],
         "messages": [{"role": "system", "content": system},
                      {"role": "user", "content": prompt}],
@@ -29,7 +35,7 @@ def _vllm(spec, system, prompt):
     return out["choices"][0]["message"]["content"]
 
 def _ollama(spec, system, prompt):
-    out = _post(f"{spec['base']}/api/chat", {
+    out = _post(f"{spec['base']}/api/chat", spec=spec, payload={
         "model": spec["model"], "stream": False,
         "messages": [{"role": "system", "content": system},
                      {"role": "user", "content": prompt}],
@@ -55,12 +61,13 @@ def which(verbose=False):
                            f"{type(e).__name__}: {e}"))
     return (None, None, None, errors) if verbose else (None, None, None)
 
-def probe(base):
+def probe(base, api_key=None):
     """What does this endpoint actually serve? Used to diagnose a wrong URL."""
     for path in ("/models", "/v1/models", "/api/tags", "/health"):
         url = base.rstrip("/").removesuffix("/v1") + path
         try:
-            with _OPENER.open(url, timeout=6) as r:
+            req = urllib.request.Request(url, headers=_headers({"api_key": api_key}))
+            with _OPENER.open(req, timeout=6) as r:
                 return url, json.loads(r.read())
         except Exception:
             continue

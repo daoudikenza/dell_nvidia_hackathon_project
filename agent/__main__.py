@@ -32,7 +32,7 @@ def main(argv):
             print("  what those endpoints actually serve:")
             for n in ("primary", "fallback"):
                 base = CFG["inference"][n]["base"]
-                url, body = llm.probe(base)
+                url, body = llm.probe(base, CFG["inference"][n].get("api_key"))
                 if url:
                     ids = []
                     if isinstance(body, dict):
