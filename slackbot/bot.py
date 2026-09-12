@@ -106,13 +106,17 @@ def approver_of(client, user_id):
     whoever they are. The email on the Slack profile is set by the workspace, so
     that is what is matched against the packet and what goes in the audit record.
     """
-    email = None
+    email, why = None, None
     try:
         email = client.users_info(user=user_id)["user"]["profile"].get("email")
-    except Exception:
-        pass
+        if not email:
+            why = ("Slack returned no email for you. The app needs the "
+                   "`users:read.email` scope, and adding a scope to an installed "
+                   "app needs a reinstall to the workspace before it takes effect.")
+    except Exception as e:
+        why = f"I could not read your Slack profile ({type(e).__name__})."
     return execute.Approver(email=email, source="slack", slack_id=user_id,
-                            display=display_name(client, user_id) or user_id)
+                            display=display_name(client, user_id) or user_id), why
 
 
 @app.action("approve_access")
@@ -121,10 +125,15 @@ def on_approve(ack, body, client):
     channel = body["channel"]["id"]
     msg = body["message"]
     thread = msg.get("thread_ts") or msg["ts"]
+    who, why = approver_of(client, body["user"]["id"])
     try:
-        r = core.approve(body["actions"][0]["value"], approver_of(client, body["user"]["id"]))
+        r = core.approve(body["actions"][0]["value"], who)
     except Exception as e:
         r = {"text": core.explain_failure(e), "refused": "error"}
+    if r.get("refused") == "no_approver_identity" and why:
+        # Say which scope is missing rather than leaving a configuration problem
+        # looking like a refusal of the person who clicked.
+        r["text"] += f"\n_{why}_"
 
     if r.get("refused"):
         # A refusal is about the person who clicked, so it goes to them only.

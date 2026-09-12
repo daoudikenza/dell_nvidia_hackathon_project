@@ -14,6 +14,11 @@ oauth_config:
       - app_mentions:read
       - chat:write
       - users:read
+      # Required. Approval is recorded against a verified email, never a display
+      # name, so without this scope users_info returns no email and every
+      # approval is refused as unattributable. Adding a scope to an app that is
+      # already installed needs a reinstall to the workspace before it applies.
+      - users:read.email
 settings:
   event_subscriptions:
     bot_events:

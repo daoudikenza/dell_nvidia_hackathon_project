@@ -122,7 +122,7 @@ def approve(packet, approver, approvers=None):
         raise Refused("no_approver_identity",
                       "I could not read an email address for whoever approved this. "
                       "Access is recorded against a person, so I will not apply a grant "
-                      "I cannot attribute. Add an email to the Slack profile and click again.")
+                      "I cannot attribute. Nothing was granted.")
 
     # 3. Nobody approves their own access, including a subject who happens to be
     #    the named manager.
