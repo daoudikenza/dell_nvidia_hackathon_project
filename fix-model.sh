@@ -7,7 +7,7 @@ set -uo pipefail
 cd "$(dirname "$0")"
 [ -x ".venv/bin/python" ] && PY=".venv/bin/python" || PY="python3"
 
-BASE="${1:-http://localhost:8081/v1}"
+BASE="${1:-http://localhost:8000/v1}"   # vLLM. 8081 is mock Okta.
 KEY="${2:-}"
 
 case "$BASE" in

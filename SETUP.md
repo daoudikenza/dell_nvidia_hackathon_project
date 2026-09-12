@@ -155,7 +155,20 @@ Honest list, so nothing surprises you:
 - The 35B model — all output so far came from a 3B
 - aarch64 Linux — developed on macOS ARM
 - `execute.open_pr` live — only dry-run; the `gh` calls have never fired
-- OpenClaw and Slack — not wired at all yet
+- `slackbot/bot.py` — the Slack handlers themselves. `slackbot/core.py` has no
+  Slack in it so every decision path is exercised offline by `evals/run.py`, but
+  the thin plumbing around it (button payloads, `chat_postEphemeral`,
+  `users_info`) has only ever run against a live workspace by hand
+- `nvidia-smi` in `agent/local_first.py` — written and exercised on a host with
+  no GPU, where it correctly reports absence. The GPU branch has not run
+- OpenClaw — the MCP server answers `initialize`, `tools/list` and `tools/call`
+  over stdio, but has not been registered with mcporter inside a sandbox
 
-The first two are the ones to check immediately: `python3 -m agent status`,
-then read a generated packet and grep one cited file path to confirm it exists.
+Checked since this list was written, so no longer untested: the MFA gate and the
+approval refusals (28 pytest cases, 24 of which run with the directory stopped),
+citation resolution against the real cal.com checkout for all five teams, and
+Slack-to-terminal parity. `.venv/bin/python evals/run.py` is the table.
+
+The first three above are the ones to check immediately on the box:
+`python3 -m agent status`, then `python3 -m agent local`, then read a generated
+packet and grep one cited file path to confirm it exists.
