@@ -1,5 +1,74 @@
 # Getting the Slack demo working
 
+## Fastest path — run our bot  (recommended for the demo)
+
+A manager mentions the bot like a colleague:
+
+    @Least onboard @Mikko Liivak to billing
+
+It resolves the mentioned Slack user to a name, finds them in Okta (or stages
+them, standing in for the HR sync), scans cal.com, and replies in-thread with
+the brief and an **Approve access** button. Clicking it provisions the groups.
+
+### 1. Slack app settings  (api.slack.com/apps -> your app)
+
+- **Socket Mode** -> on. App-level token, scope `connections:write` -> `xapp-…`
+- **Interactivity & Shortcuts** -> on. No request URL needed in Socket Mode.
+  Required for the Approve button.
+- **Event Subscriptions** -> on -> bot event `app_mention`
+- **OAuth & Permissions -> Bot Token Scopes:** `app_mentions:read`, `chat:write`,
+  **`users:read`** (turns `@Mikko Liivak` into a name)
+- **Reinstall to Workspace** after changing scopes -> `xoxb-…`
+- In the channel: `/invite @Least`
+
+### 2. On the Dell
+
+    cd ~/hackathon/dell_nvidia_hackathon_project
+    git pull
+    .venv/bin/pip install -r requirements.txt
+    ./run.sh                                   # mock Okta must be up
+
+    export SLACK_BOT_TOKEN="xoxb-…"
+    export SLACK_APP_TOKEN="xapp-…"
+    .venv/bin/python -m slackbot.bot
+
+Leave it running. It prints `Least is listening on Slack`.
+
+### 3. In Slack
+
+    @Least onboard @Nadia Rahimi to billing        # enrolled -> Approve button
+    @Least onboard @Mikko Liivak to billing        # new -> staged, MFA blocks
+    @Least who has production access nobody uses?
+    @Least who has elevated access without MFA?
+
+Mikko is blocked until he enrolls. To show the unblock live:
+
+    .venv/bin/python -m agent enroll mikko         # on the Dell
+
+then click **Re-check Okta Verify** in the thread.
+
+### Do not run two Socket Mode connections on one app
+
+If you ALSO enabled Slack through NemoClaw (`channels add slack`) with the same
+tokens, Slack splits events randomly between the two connections — half your
+mentions vanish. Pick one:
+
+    nemoclaw <sandbox-name> channels stop slack    # keep our bot
+
+or create a second Slack app for the other path.
+
+### The honest tradeoff
+
+This bot carries Slack messages itself instead of through OpenClaw. Inference
+still runs on the GB10, the tools are the same ones OpenClaw's agent calls over
+MCP, and the OpenClaw TUI remains the stack demonstration. If a judge asks, say
+exactly that. If OpenClaw's own Slack channel works for you (below), prefer it.
+
+---
+
+## The OpenClaw-native path
+
+
 Taken from NemoClaw's own docs (`docs/manage-sandboxes/set-up-slack.mdx`), not
 guessed. Slack uses **Socket Mode**, which is what makes this work on venue wifi
 with no public URL.
