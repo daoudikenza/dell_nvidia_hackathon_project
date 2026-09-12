@@ -4,7 +4,7 @@ name: Nadia Rahimi
 team: billing
 start_date: 2026-09-14
 manager: sarah.chen@cal.example.com
-generated: 2026-09-12T15:16:57Z
+generated: 2026-09-12T16:03:16Z
 model: nvidia/Qwen3.6-35B-A3B-NVFP4   # on-box, no network
 status: blocked-mfa
 access:
@@ -38,7 +38,7 @@ Starts 2026-09-14. Manager: sarah.chen@cal.example.com.
 
 ## What you're joining
 
-You're joining the billing team, which is responsible for managing the financial aspects of cal.com. Your primary focus areas include Stripe payment processing, Prisma database management, and API deployment. Key signals include connecting to Postgres, deploying the service, reporting errors to Sentry, and reading Stripe API credentials. You'll be working closely with Mandar Joshi, Benny Joo, and Romit on these initiatives.
+You're joining the billing team, responsible for managing the financial aspects of cal.com. Key areas of focus include Stripe payment processing, Prisma database management, and API deployments. The team is led by Mandar Joshi, Benny Joo, and Romit, and is connected to various signals, including database migrations, deployment, error reporting, and Stripe API credential management.
 
 ## Who owns what
 
@@ -50,7 +50,7 @@ Most frequent authors in `packages/app-store/stripepayment`:
 
 ## Running it locally
 
-To run the billing application locally, you'll need to set up a development environment for the `app-store/stripepayment`, `prisma`, `api`, and `ee` packages. This is necessary to test and debug the application before deploying it to production, and to ensure that all the necessary dependencies and signals are properly connected.
+To run the billing service locally, you'll need to set up a development environment that mirrors the production setup, including the necessary dependencies and configurations. This is done to ensure that the service behaves as expected and to facilitate testing and debugging before deploying to production.
 
 Environment variables this code actually reads (extracted from the repo, not generated):
 

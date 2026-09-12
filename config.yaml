@@ -1,5 +1,5 @@
 # Least — runtime config. Everything here points at localhost on the GB10.
-repo: ~/hack-stage/demo-repos/cal.com     # the "customer codebase"
+repo: ~/hack-stage/demo-repos/cal.com
 okta: http://localhost:8081
 vault: http://localhost:8200
 

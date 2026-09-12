@@ -14,9 +14,22 @@ No Slack, no OpenClaw, no agent. Just the code.
     cd dell_nvidia_hackathon_project
     pip3 install -r requirements.txt
 
-Check the repo path. `config.yaml` points `repo:` at the cal.com clone:
+### Get the demo codebase
 
-    ls ~/hack-stage/demo-repos/cal.com      # must exist, else edit config.yaml
+**cal.com is NOT part of the NemoClaw/OpenClaw/OpenShell stack.** It is demo
+data and arrives separately - whoever carried the stack on USB had no reason
+to bring it.
+
+    ./setup-demo-repo.sh
+
+Clones it if missing, fixes `config.yaml` to match, and verifies the scanner
+finds signals. If you already have it somewhere else:
+
+    ./setup-demo-repo.sh /path/to/cal.com
+
+Faster than cloning: copy `~/hack-stage/demo-repos/cal.com` off a teammate's
+laptop (443 MB). **Do not clone with `--depth 1`** - "Who owns what" comes from
+git log, so no history means that section silently goes empty.
 
 Start the services:
 
