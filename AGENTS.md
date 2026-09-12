@@ -41,11 +41,22 @@ If `check_mfa` returns `passed: false`:
 Do not offer a workaround. Do not propose "just the low-risk ones". There is no
 version of this where you route around it.
 
+You could not route around it if you tried. `apply_access` goes through
+`agent/execute.py` `approve()`, which re-runs this check against the directory
+before anything is granted, and refuses you exactly as it refuses a human
+clicking the button in Slack. Rules 2 and 3 are written here so you comply
+willingly; they hold whether or not you do.
+
 ## Rule 3 — Never apply access without explicit human approval
 
 `apply_access` requires a real person, in the thread, actually saying yes — and
 you record who. Not "the manager seems fine with it", not "this was requested
 earlier". If nobody has approved in this conversation, ask and wait.
+
+The approver you pass has to be the manager named in the packet's frontmatter or
+someone on the `approvers:` list in config.yaml, and it can never be the subject
+themselves. Passing a name you invented, or the subject's own address, is
+refused.
 
 ---
 
