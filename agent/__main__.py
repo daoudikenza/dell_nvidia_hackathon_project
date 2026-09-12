@@ -6,6 +6,7 @@ Least CLI.  python -m agent <command>
   scan      <team>            access signals derived from the repo
   peers     <team>            groups the team actually uses
   onboard   <who> <team>      build the packet (name, email or id)
+  brief     <who> <team>      the manager-facing answer, sized for chat
   enroll    <who>             simulate the person completing Okta Verify setup
   stage     <first> <last> [team]   simulate HR provisioning a new hire
   crosscheck <packet.md>      docs-vs-access gaps
@@ -124,6 +125,15 @@ def main(argv):
         print(f'  {u["profile"]["firstName"]} {u["profile"]["lastName"]} — '
               f'Okta Verify {"ENROLLED" if g["passed"] else "still missing"} '
               f'({", ".join(g["factors"]) or "none"})')
+        return 0
+
+    if cmd == "brief":
+        from . import packet, brief
+        p = packet.build(rest[0], rest[1], use_llm="--no-llm" not in rest)
+        out = packet.write(p)
+        print()
+        print(brief.render(p, str(out.relative_to(p["user"] and __import__("pathlib")
+              .Path(out).parent.parent))))
         return 0
 
     if cmd == "crosscheck":

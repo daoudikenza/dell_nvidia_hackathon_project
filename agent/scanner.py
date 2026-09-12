@@ -13,16 +13,34 @@ import re, pathlib
 from .config import CFG
 from . import trace
 
-# signal pattern -> (group, why)   the customer-owned mapping
+# The customer-owned mapping. Each signal in the code can imply up to three
+# different things, and conflating them is what makes onboarding docs useless:
+#
+#   group   - IAM group membership. The agent can grant this after approval.
+#   account - a login that does not exist in the identity provider. Somebody
+#             has to invite them. The agent can only tell you who to ask.
+#   setup   - something the new hire does on their own machine.
+#
+# A list of IAM groups is not onboarding. "Ask Mandar for a Stripe dashboard
+# invite, then run this" is.
 POLICY = [
-    (r"STRIPE_(PRIVATE|SECRET)_KEY",      "vault-billing-read",   "reads Stripe API credentials"),
-    (r"STRIPE_WEBHOOK_SECRET",            "vault-billing-read",   "verifies Stripe webhooks"),
-    (r"DATABASE_URL|POSTGRES_URL",        "db-staging-read",      "connects to Postgres"),
-    (r"SENTRY_(DSN|AUTH_TOKEN)",          "sentry-eng",           "reports errors to Sentry"),
-    (r"GRAFANA|PROMETHEUS",               "grafana-billing",      "queries dashboards"),
-    (r"DATADOG|DD_API_KEY",               "datadog-eng",          "emits APM traces"),
-    (r"ANALYTICS|SEGMENT_|POSTHOG",       "analytics-dashboard",  "writes product analytics"),
-    (r"VERCEL_|DEPLOY_TOKEN",             "deploy-staging",       "deploys the service"),
+    (r"STRIPE_(PRIVATE|SECRET)_KEY",  "vault-billing-read",  "reads Stripe API credentials",
+     ("Stripe Dashboard", "billing lead", "read-only on the test account"),
+     "pull test keys from Vault: `vault kv get secret/billing/stripe-test`"),
+    (r"STRIPE_WEBHOOK_SECRET",        "vault-billing-read",  "verifies Stripe webhooks",
+     None, "run `stripe listen --forward-to localhost:3000` to test webhooks locally"),
+    (r"DATABASE_URL|POSTGRES_URL",    "db-staging-read",     "connects to Postgres",
+     None, "point DATABASE_URL at staging, never production"),
+    (r"SENTRY_(DSN|AUTH_TOKEN)",      "sentry-eng",          "reports errors to Sentry",
+     ("Sentry", "platform team", "member seat on the cal.com org"), None),
+    (r"GRAFANA|PROMETHEUS",           "grafana-billing",     "queries dashboards",
+     ("Grafana", "infra team", "viewer on billing dashboards"), None),
+    (r"DATADOG|DD_API_KEY",           "datadog-eng",         "emits APM traces",
+     ("Datadog", "infra team", "read on APM"), None),
+    (r"ANALYTICS|SEGMENT_|POSTHOG",   "analytics-dashboard", "writes product analytics",
+     ("PostHog", "product analytics owner", "member"), None),
+    (r"VERCEL_|DEPLOY_TOKEN",         "deploy-staging",      "deploys the service",
+     ("Vercel", "infra team", "member on the cal.com team"), None),
 ]
 ENV  = re.compile(r"process\.env\.([A-Z0-9_]{4,})")
 CIS  = re.compile(r"secrets\.([A-Z0-9_]{4,})")
@@ -39,6 +57,23 @@ def _walk(root, subpaths):
             if f.suffix in CODE or f.suffix in {".yml", ".yaml"}:
                 yield f
 
+def accounts_and_setup(signals):
+    """Split the signals into things a human must create and things to run."""
+    accounts, setup = [], []
+    for h in signals:
+        c = h["citations"][0]
+        if h.get("account"):
+            name, ask, level = h["account"]
+            accounts.append({"service": name, "ask": ask, "level": level,
+                             "because": f'{c["file"]}:{c["line"]} uses {c["var"]}'})
+        if h.get("setup"):
+            setup.append({"step": h["setup"], "because": f'{c["var"]}'})
+    seen, uniq = set(), []
+    for a in accounts:
+        if a["service"] in seen: continue
+        seen.add(a["service"]); uniq.append(a)
+    return uniq, setup
+
 def scan(team_paths, root=None, max_files=4000):
     """Return access signals with file:line citations."""
     root = pathlib.Path(root or CFG["repo"])
@@ -53,13 +88,14 @@ def scan(team_paths, root=None, max_files=4000):
         pat = CIS if f.suffix in {".yml", ".yaml"} else ENV
         for m in pat.finditer(text):
             var = m.group(1)
-            for rx, group, why in POLICY:
+            for rx, group, why, account, setup in POLICY:
                 if not re.search(rx, var): continue
                 line = text[:m.start()].count("\n") + 1
                 key = (group, var)
                 if key in seen: continue
                 seen.add(key)
-                hits.setdefault(group, {"group": group, "why": why, "citations": []})
+                hits.setdefault(group, {"group": group, "why": why, "citations": [],
+                                        "account": account, "setup": setup})
                 rel = str(f.relative_to(root))
                 trace.log("scan", f"HIT  {var}", f"{rel}:{line} -> {group}")
                 hits[group]["citations"].append({

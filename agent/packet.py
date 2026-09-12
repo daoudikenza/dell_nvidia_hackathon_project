@@ -8,7 +8,7 @@ manager can approve on understanding rather than on trust.
 """
 import datetime as dt, json, subprocess, pathlib
 from . import okta, peers, gate, llm, trace
-from .scanner import scan, TEAM_PATHS
+from .scanner import scan, accounts_and_setup, TEAM_PATHS
 from .baseline import clone_a_teammate
 from .config import CFG
 
@@ -45,6 +45,7 @@ def build(user_id, team, use_llm=True):
     prof   = u["profile"]
     paths  = TEAM_PATHS.get(team, [])
     derived     = scan(paths)
+    accounts, setup_steps = accounts_and_setup(derived)
     trace.step("peer usage — what does the team ACTUALLY use?")
     conventional= [c for c in peers.conventional(team)
                    if c["group"] not in {d["group"] for d in derived}]
@@ -94,6 +95,7 @@ def build(user_id, team, use_llm=True):
             prose["_offline"] = str(e)
 
     return {"user": u, "team": team, "derived": derived, "conventional": conventional,
+            "accounts": accounts, "setup_steps": setup_steps,
             "declined": declined, "baseline": base, "gate": g, "owners": own,
             "prose": prose, "paths": paths,
             "generated": dt.datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")}
@@ -162,6 +164,19 @@ def render(p):
         b += [f'- ~~`{d["group"]}`~~ — {d["because"]}' for d in p["declined"]] + [""]
     b += ["**Unknown** — no signal in code or peer usage. Manager decides:", "",
           "- Salesforce, Figma, or anything provisioned outside the identity provider.", ""]
+
+    if p.get("accounts"):
+        b += ["## Accounts someone has to create", "",
+              "These are not IAM groups — they do not exist in the identity provider, "
+              "so the agent cannot grant them. A person has to send an invite.", "",
+              "| Service | Ask | Level | Why |", "|---|---|---|---|"]
+        for a in p["accounts"]:
+            b.append(f'| {a["service"]} | {a["ask"]} | {a["level"]} | `{a["because"]}` |')
+        b.append("")
+
+    if p.get("setup_steps"):
+        b += ["## First-day setup", ""]
+        b += [f'- {x["step"]}' for x in p["setup_steps"]] + [""]
     if p["prose"].get("_offline"):
         b += ["> _Prose sections omitted: %s_" % p["prose"]["_offline"], ""]
     return "\n".join(fm + b)

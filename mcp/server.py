@@ -46,6 +46,18 @@ TOOLS = [
        "user_id":{"type":"string","description":"Okta id, email, or name"},
        "team":{"type":"string"}},"required":["user_id","team"]}},
 
+  {"name": "onboarding_brief",
+   "description": ("THE MAIN TOOL. A manager asks what a new hire needs -- call this. "
+                   "Returns everything in one go: IAM groups you can grant (with the "
+                   "file:line that requires each), accounts a HUMAN must create and who "
+                   "to ask, the new hire's first-day setup steps, what was declined and "
+                   "why, and what cannot be determined. Already formatted for chat -- "
+                   "post it as-is, do not rewrite or summarise it, and never add a group "
+                   "or account that is not in it."),
+   "inputSchema": {"type":"object","properties":{
+       "user_id":{"type":"string","description":"Okta id, email, or name"},
+       "team":{"type":"string"}},"required":["user_id","team"]}},
+
   {"name": "find_gaps",
    "description": ("Cross-check a packet: systems the onboarding prose tells the new hire "
                    "to use, that no access request covers. Run after build_packet."),
@@ -94,6 +106,15 @@ def call(name, a):
 
     if name == "check_mfa":
         return gate.check(okta.resolve(a["user_id"])["id"])
+
+    if name == "onboarding_brief":
+        from agent import brief
+        p = pk.build(a["user_id"], a["team"])
+        out = pk.write(p)
+        return {"message": brief.render(p, str(out.relative_to(CFG["_root"]))),
+                "packet": str(out.relative_to(CFG["_root"])),
+                "gate_passed": p["gate"]["passed"],
+                "needs_human_accounts": [x["service"] for x in p.get("accounts", [])]}
 
     if name == "build_packet":
         p = pk.build(a["user_id"], a["team"])
