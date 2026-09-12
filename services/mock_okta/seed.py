@@ -34,6 +34,13 @@ GROUPS = {
     "deploy-staging":      ("Deploy to staging", 0),
     "deploy-prod":         ("Deploy to production", 2),
     "infra-admin":         ("Full infrastructure admin", 2),
+    "grafana-billing":     ("Grafana billing dashboards", 0),
+    "sentry-eng":          ("Sentry error tracking", 0),
+    "datadog-eng":         ("Datadog APM", 0),
+    "jira-eng":            ("Jira engineering projects", 0),
+    "figma-viewer":        ("Figma design files (read)", 0),
+    "analytics-dashboard": ("Product analytics warehouse", 1),
+    "pagerduty-oncall":    ("PagerDuty on-call rotation", 1),
 }
 
 FIRST = ["Sarah","Marcus","Priya","Tom","Ana","Wei","Jonas","Leila","Diego","Ruth",
@@ -72,9 +79,18 @@ for i in range(40):
     })
     base = {"billing":"eng-billing","bookings":"eng-bookings","platform":"eng-platform",
             "app-store":"eng-appstore","infra":"eng-infra"}[team]
-    for g in (base, "db-staging-read", "deploy-staging"):
+    tenure = random.randint(30, 1100)
+    give = [base, "db-staging-read", "deploy-staging", "jira-eng", "sentry-eng"]
+    if team == "billing":   give += ["grafana-billing", "vault-billing-read"]
+    if team == "bookings":  give += ["grafana-billing"]
+    if team == "infra":     give += ["datadog-eng", "pagerduty-oncall"]
+    # privilege creep: the longer you have been here, the more you have collected
+    if tenure > 400:  give += ["figma-viewer"]
+    if tenure > 700:  give += ["datadog-eng", "db-prod-read"]
+    if tenure > 950:  give += ["analytics-dashboard"]
+    for g in dict.fromkeys(give):
         memberships.append({"userId": uid, "groupId": GID[g],
-                            "granted": iso(NOW - dt.timedelta(days=random.randint(30,900)))})
+                            "granted": iso(NOW - dt.timedelta(days=random.randint(20, tenure)))})
 
 U = {u["id"]: u for u in users}
 def grant(uid, g, days_ago):
@@ -113,6 +129,17 @@ for uid, gs_ in LEGIT_PROD.items():
     for g in gs_:
         grant(uid, g, random.randint(120, 600))
 
+# ---- THE NEW HIRE. HR provisions the identity; access is what she lacks.
+# ---- STAGED, zero group memberships, and no MFA yet -- so the gate fires.
+users.append({"id":"00uNEWHIRE01","status":"STAGED",
+              "created":iso(NOW - dt.timedelta(days=2)),
+              "profile":{"firstName":"Nadia","lastName":"Rahimi",
+                         "email":"nadia.rahimi@cal.example.com",
+                         "login":"nadia.rahimi@cal.example.com",
+                         "title":"Software Engineer","department":"billing",
+                         "startDate":"2026-09-14","manager":"sarah.chen@cal.example.com"},
+              "_factors":[]})
+
 # ---- usage logs: routine groups used recently, planted ones never
 def log(uid, gid, when, ev="group.privilege.used"):
     logs.append({"uuid": f"ev{len(logs):09d}", "published": iso(when),
@@ -128,6 +155,13 @@ for m in memberships:
               or (uid=="00u00000002" and gname=="vault-billing-admin")
     if dormant:
         continue                                  # never used -> agent should find it
+    # Not every grant gets exercised. Tools handed out by default (Figma, the
+    # analytics warehouse, prod read) are the ones people never actually open --
+    # this is the ordinary, unglamorous half of over-provisioning.
+    rarely = {"figma-viewer": .80, "analytics-dashboard": .75,
+              "db-prod-read": .65, "datadog-eng": .45, "jira-eng": .15}
+    if random.random() < rarely.get(gname, 0.12):
+        continue
     for _ in range(random.randint(3, 25)):
         log(uid, m["groupId"], NOW - dt.timedelta(days=random.randint(0, 60),
                                                   hours=random.randint(0,23)))

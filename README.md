@@ -37,3 +37,32 @@ the LLM to do what grep does better.
 
 The org is seeded with realistic over-provisioning so the agent has real
 findings. 46% of production-level grants are unused.
+
+---
+
+## Running on the GB10
+
+    ./run.sh                    # seeds Okta, starts mock Okta + Vault dev, checks inference
+    python3 -m agent status     # which backend is answering
+
+Inference resolves vLLM first (the 35B), Ollama second. Neither reachable = hard
+error, never a silent cloud call.
+
+## Demo commands
+
+    python3 -m agent baseline billing            # the problem: 9 grants, 0 justified
+    python3 -m agent scan     billing            # code-derived signals w/ file:line
+    python3 -m agent peers    billing            # what the team actually uses
+    python3 -m agent onboard  00uNEWHIRE01 billing
+    python3 -m agent crosscheck packets/nadia-rahimi.md
+    python3 -m agent approve  packets/nadia-rahimi.md sarah.chen@cal.example.com
+    python3 -m agent drift                       # the always-on scan
+    python3 loop/daemon.py 3600                  # the always-on loop
+
+Re-run `python3 services/mock_okta/seed.py` to reset between rehearsals.
+
+## The new hire
+
+`00uNEWHIRE01` — Nadia Rahimi, billing, starts Mon 14 Sep, STAGED, no groups,
+no MFA enrolled (so the gate fires). Her manager is Sarah Chen, the same senior
+engineer the baseline clones from.

@@ -1,0 +1,19 @@
+# Least — runtime config. Everything here points at localhost on the GB10.
+repo: ~/hack-stage/demo-repos/cal.com     # the "customer codebase"
+okta: http://localhost:8081
+vault: http://localhost:8200
+
+inference:
+  # vLLM is primary (the 35B). Ollama is the fallback if vLLM isn't up yet.
+  primary:  {kind: vllm,   base: "http://localhost:8000/v1", model: "nvidia/Qwen3.6-35B-A3B-NVFP4"}
+  fallback: {kind: ollama, base: "http://localhost:11434",   model: "llama3.2"}
+  temperature: 0.2
+  max_tokens: 1400
+
+thresholds:
+  peer_quorum: 0.75      # fraction of team that must ACTIVELY USE a group to propose it
+  peer_window_days: 30
+  drift_unused_days: 90
+
+slack:
+  approval_channel: "#onboarding"
