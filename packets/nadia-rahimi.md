@@ -4,7 +4,7 @@ name: Nadia Rahimi
 team: billing
 start_date: 2026-09-14
 manager: sarah.chen@cal.example.com
-generated: 2026-09-12T15:09:56Z
+generated: 2026-09-12T15:16:57Z
 model: nvidia/Qwen3.6-35B-A3B-NVFP4   # on-box, no network
 status: blocked-mfa
 access:
@@ -36,6 +36,10 @@ Starts 2026-09-14. Manager: sarah.chen@cal.example.com.
 | This packet proposes | **6** grants, all justified |
 | Declined | **3** |
 
+## What you're joining
+
+You're joining the billing team, which is responsible for managing the financial aspects of cal.com. Your primary focus areas include Stripe payment processing, Prisma database management, and API deployment. Key signals include connecting to Postgres, deploying the service, reporting errors to Sentry, and reading Stripe API credentials. You'll be working closely with Mandar Joshi, Benny Joo, and Romit on these initiatives.
+
 ## Who owns what
 
 Most frequent authors in `packages/app-store/stripepayment`:
@@ -43,6 +47,18 @@ Most frequent authors in `packages/app-store/stripepayment`:
 - Mandar Joshi
 - Benny Joo
 - Romit
+
+## Running it locally
+
+To run the billing application locally, you'll need to set up a development environment for the `app-store/stripepayment`, `prisma`, `api`, and `ee` packages. This is necessary to test and debug the application before deploying it to production, and to ensure that all the necessary dependencies and signals are properly connected.
+
+Environment variables this code actually reads (extracted from the repo, not generated):
+
+- `DATABASE_URL`
+- `INSIGHTS_DATABASE_URL`
+- `SENTRY_DSN`
+- `STRIPE_PRIVATE_KEY`
+- `VERCEL_PROMOTE_WEBHOOK_SECRET`
 
 ## Access requested
 

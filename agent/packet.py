@@ -15,7 +15,16 @@ from .config import CFG
 SYSTEM = ("You are a staff engineer writing onboarding notes for a new teammate. "
           "Be concrete and brief. No greetings, no filler, no bullet-point padding. "
           "You are given real facts about a real repository -- use only those facts "
-          "and never invent file names, services, or people.")
+          "and never invent file names, services, or people. "
+          "Do NOT restate the section title; start directly with the content.")
+
+def _strip_echoed_heading(text, title):
+    """Small models repeat the heading back. Drop it rather than render it twice."""
+    lines = [l for l in text.strip().splitlines()]
+    while lines and (lines[0].strip().lower().strip("#* ") == title.lower()
+                     or not lines[0].strip()):
+        lines.pop(0)
+    return "\n".join(lines).strip()
 
 def owners(repo, subpath, top=4):
     """Who actually owns this code, from git history."""
@@ -54,12 +63,19 @@ def build(user_id, team, use_llm=True):
                                          "file": d["citations"][0]["file"]} for d in derived]},
                            indent=2)
         try:
-            prose["intro"] = llm.ask(SYSTEM,
-                f"Write 3-4 sentences titled 'What you're joining' for a new engineer on the "
-                f"{team} team of the cal.com codebase. Facts:\n{facts}")
-            prose["local"] = llm.ask(SYSTEM,
-                f"Write 3-4 sentences titled 'Running it locally' naming the real env vars "
-                f"this person will need, based only on these facts:\n{facts}")
+            prose["intro"] = _strip_echoed_heading(llm.ask(SYSTEM,
+                f"Write 3-4 sentences for a section called \"What you're joining\" for a new "
+                f"engineer on the {team} team of the cal.com codebase. Facts:\n{facts}"),
+                "What you're joining")
+            # NOTE: the model is NOT asked to name environment variables. A 3B
+            # model invented VAULT_BILLING_READ_TOKEN here, which does not exist
+            # in cal.com. Identifiers come from the scanner; the model only
+            # writes the sentence around them.
+            prose["local"] = _strip_echoed_heading(llm.ask(SYSTEM,
+                f"Write TWO sentences of context for a 'Running it locally' section: what "
+                f"the developer is setting up and why. Do NOT list or name any environment "
+                f"variables, files, or tokens - those are rendered separately. Facts:\n{facts}"),
+                "Running it locally")
         except llm.Offline as e:
             prose["_offline"] = str(e)
 
@@ -106,8 +122,14 @@ def render(p):
         b += ["## Who owns what", "",
               "Most frequent authors in `%s`:" % (p["paths"][0] if p["paths"] else "-"), ""]
         b += ["- %s" % o for o in p["owners"]] + [""]
-    if p["prose"].get("local"):
-        b += ["## Running it locally", "", p["prose"]["local"], ""]
+    envs = sorted({c["var"] for d in p["derived"] for c in d["citations"]})
+    if p["prose"].get("local") or envs:
+        b += ["## Running it locally", ""]
+        if p["prose"].get("local"): b += [p["prose"]["local"], ""]
+        if envs:
+            b += ["Environment variables this code actually reads "
+                  "(extracted from the repo, not generated):", ""]
+            b += ["- `%s`" % e for e in envs] + [""]
 
     b += ["## Access requested", ""]
     if p["derived"]:
