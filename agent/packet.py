@@ -114,27 +114,45 @@ def build(user_id, team, use_llm=True):
             "prose": prose, "paths": paths,
             "generated": dt.datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")}
 
+def _scalar(v):
+    """
+    Make a directory string safe to interpolate into frontmatter.
+
+    Frontmatter is read back to decide who may approve a packet and which groups
+    to apply, so a newline inside a profile field is an authorisation bug, not a
+    formatting one: a surname containing "\nmanager: mallory@..." injected a
+    manager line that the parser -- which took the first match -- preferred to
+    the real one, and an "access: derived:" block whose groups were then applied.
+    Proven end to end against the live directory before this existed.
+
+    Everything that reaches frontmatter goes through here. Newlines become
+    spaces; nothing is dropped, so a mangled name is visible rather than silently
+    truncated.
+    """
+    return " ".join(str("-" if v is None else v).split())
+
+
 def render(p):
     prof, g = p["user"]["profile"], p["gate"]
     fm = ["---",
-          f'subject: {prof["login"]}',
-          f'name: {prof["firstName"]} {prof["lastName"]}',
-          f'team: {p["team"]}',
-          f'start_date: {prof.get("startDate","-")}',
-          f'manager: {prof.get("manager","-")}',
+          f'subject: {_scalar(prof["login"])}',
+          f'name: {_scalar(prof["firstName"])} {_scalar(prof["lastName"])}',
+          f'team: {_scalar(p["team"])}',
+          f'start_date: {_scalar(prof.get("startDate","-"))}',
+          f'manager: {_scalar(prof.get("manager","-"))}',
           f'generated: {p["generated"]}',
           f'model: {p["prose"].get("_model") or "none — no prose generated"}'
           f'   # on-box, no network',
           f'status: {"awaiting-approval" if g["passed"] else "blocked-mfa"}',
           "access:", "  derived:"]
     for d in p["derived"]:
-        fm.append(f'    - {{group: {d["group"]}, because: "{d["because"]}"}}')
+        fm.append(f'    - {{group: {_scalar(d["group"])}, because: "{_scalar(d["because"])}"}}')
     fm.append("  conventional:")
     for c in p["conventional"]:
-        fm.append(f'    - {{group: {c["group"]}, because: "{c["because"]}"}}')
+        fm.append(f'    - {{group: {_scalar(c["group"])}, because: "{_scalar(c["because"])}"}}')
     fm.append("  declined:")
     for d in p["declined"]:
-        fm.append(f'    - {{group: {d["group"]}, because: "{d["because"]}"}}')
+        fm.append(f'    - {{group: {_scalar(d["group"])}, because: "{_scalar(d["because"])}"}}')
     fm += ["---", ""]
 
     n_prop = len(p["derived"]) + len(p["conventional"])

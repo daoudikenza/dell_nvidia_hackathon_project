@@ -36,12 +36,24 @@ def _norm(email):
 
 
 def _field(md, key):
-    """Read one scalar out of the packet frontmatter."""
+    """
+    Read one scalar out of the packet frontmatter.
+
+    Refuses a duplicate key rather than returning the first. This parser feeds an
+    authorisation decision, and "first match wins" is how a newline injected into
+    a directory profile field forged an earlier `manager:` line that outranked
+    the real one. packet.render can no longer emit such a line; this refuses to
+    guess if anything else ever does.
+    """
     head = md.split("---")[1] if md.count("---") >= 2 else ""
-    for line in head.splitlines():
-        if line.startswith(f"{key}:"):
-            return line.split(":", 1)[1].strip()
-    return ""
+    hits = [l.split(":", 1)[1].strip() for l in head.splitlines()
+            if l.startswith(f"{key}:")]
+    if len(hits) > 1:
+        raise Refused("malformed_packet",
+                      f"This packet declares `{key}:` {len(hits)} times, so I cannot tell "
+                      f"which is real. I will not guess at who may approve access. "
+                      f"Re-run the onboard to regenerate it.")
+    return hits[0] if hits else ""
 
 
 def _packet_path(packet):
@@ -117,17 +129,27 @@ def approve(packet, approver, approvers=None):
     if _norm(approver.email) == _norm(prof["login"]):
         raise Refused("self_approval",
                       f"{who} cannot approve their own access. This one needs "
-                      f"{_field(md, 'manager') or 'an approver'}, or anyone else on the "
+                      f"{prof.get('manager') or 'an approver'}, or anyone else on the "
                       f"approver list.")
 
-    # 4. Authority.
-    manager = _norm(_field(md, "manager"))
+    # 4. Authority, taken from the live directory rather than from the packet.
+    #    The packet is a document; the directory is the authority on who manages
+    #    whom, exactly as it is the authority on enrollment above. Reading the
+    #    approver out of the file being approved lets whoever can influence that
+    #    file choose their own approver.
+    manager = _norm(prof.get("manager"))
     allowed = {a for a in ([manager] if manager and manager != "-" else []) + approvers if a}
     if _norm(approver.email) not in allowed:
-        named = ", ".join(sorted(allowed)) or "nobody — the packet names no manager"
+        named = ", ".join(sorted(allowed)) or "nobody — the directory names no manager"
         raise Refused("not_approver",
                       f"{approver.email} is not an approver for {who}'s access. "
                       f"This packet can be approved by: {named}.")
+    claimed = _norm(_field(md, "manager"))
+    if claimed and claimed != "-" and claimed != manager:
+        raise Refused("stale_packet",
+                      f"This packet names {claimed} as {who}'s manager and the directory "
+                      f"says {manager or 'nobody'}. The directory wins. Re-run the onboard "
+                      f"so the packet and the directory agree.")
 
     groups = parse_frontmatter_groups(md)
     by = f'{approver.source}:{approver.slack_id or approver.email} <{approver.email}>'
