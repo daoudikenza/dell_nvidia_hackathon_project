@@ -13,3 +13,7 @@ services/mock_okta/*.tmp
 # secrets and generated state - never commit
 .env
 loop/journal.md
+
+# Session scratch written for Daniel, not for the repo. Never committed.
+SESSION-HANDOFF.md
+BRANCH-DIFF.md
